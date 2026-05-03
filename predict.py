@@ -1,0 +1,152 @@
+"""
+predict.py
+──────────
+Load a trained model from MLflow/disk and make a prediction for today.
+
+Usage:
+    # Load from MLflow Model Registry:
+    python predict.py --model LightGBM --from-registry
+
+    # Load from local file:
+    python predict.py --model LightGBM --model-path saved_models/LightGBM_best.joblib
+
+Output:
+    Today's signal: BUY / SELL / HOLD / STRONG BUY / STRONG SELL
+    with confidence breakdown.
+"""
+
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import argparse
+import json
+import logging
+from datetime import datetime, timedelta
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import yaml
+
+from data.fetch_data import fetch_ohlcv, make_labels, preprocess
+from features.feature_engineering import engineer_features, get_feature_columns
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+log = logging.getLogger(__name__)
+
+SIGNAL_NAMES   = {0: "STRONG SELL 🔴", 1: "SELL 🟠", 2: "HOLD ⚪", 3: "BUY 🟢", 4: "STRONG BUY 💚"}
+SIGNAL_ACTIONS = {0: "SHORT — large downward move expected",
+                  1: "SHORT — small downward move expected",
+                  2: "STAY OUT — no significant move expected",
+                  3: "LONG  — small upward move expected",
+                  4: "LONG  — large upward move expected"}
+
+
+def load_config(path="configs/config.yaml") -> dict:
+    with open(path) as f:
+        return yaml.safe_load(f)
+
+
+def get_latest_features(cfg: dict, feature_cols: list[str]) -> np.ndarray:
+    """Fetch the latest data and compute features for today."""
+    dc = cfg["data"]
+    end = datetime.today().strftime("%Y-%m-%d")
+    # Fetch enough history for all rolling windows (200+ days minimum)
+    start = (datetime.today() - timedelta(days=600)).strftime("%Y-%m-%d")
+
+    df = fetch_ohlcv(dc["ticker"], start, end)
+    df = make_labels(df, dc["strong_threshold"], dc["weak_threshold"])
+    df = preprocess(df)
+    feat_df = engineer_features(df, cfg)
+
+    # Use the last available row (today's features to predict tomorrow)
+    last_row = feat_df[feature_cols].iloc[-1].values.astype(np.float32)
+    last_date = feat_df.index[-1]
+    log.info(f"Latest data point: {last_date.date()}")
+    return last_row.reshape(1, -1), last_date
+
+
+def predict_sklearn(model_path: str, feature_cols: list[str], cfg: dict):
+    import joblib
+    bundle = joblib.load(model_path)
+    model  = bundle["model"]
+
+    X, last_date = get_latest_features(cfg, feature_cols)
+    pred   = model.predict(X)[0]
+    proba  = model.predict_proba(X)[0] if hasattr(model, "predict_proba") else None
+    return pred, proba, last_date
+
+
+def predict_from_registry(model_name: str, feature_cols: list[str], cfg: dict):
+    import mlflow
+    from utils.mlflow_utils import setup_mlflow
+    setup_mlflow(cfg)
+
+    registered_name = f"eurusd_{model_name.lower()}"
+    model_uri = f"models:/{registered_name}/latest"
+    log.info(f"Loading model from registry: {model_uri}")
+    model = mlflow.pyfunc.load_model(model_uri)
+
+    X, last_date = get_latest_features(cfg, feature_cols)
+    X_df = pd.DataFrame(X, columns=feature_cols)
+    pred = int(model.predict(X_df)[0])
+    return pred, None, last_date
+
+
+def print_signal(pred: int, proba: np.ndarray | None, last_date, model_name: str):
+    print("\n" + "═"*55)
+    print(f"  EUR/USD DAILY SIGNAL  —  {datetime.today().strftime('%A %d %b %Y')}")
+    print(f"  Model: {model_name}  |  Based on data up to: {last_date.date()}")
+    print("═"*55)
+    print(f"\n  📊  SIGNAL:  {SIGNAL_NAMES[pred]}")
+    print(f"  📌  ACTION:  {SIGNAL_ACTIONS[pred]}\n")
+
+    if proba is not None:
+        print("  Probability breakdown:")
+        labels = ["Strong Sell", "Sell", "Hold", "Buy", "Strong Buy"]
+        bar_max = 30
+        for i, (lbl, p) in enumerate(zip(labels, proba)):
+            bar = "█" * int(p * bar_max)
+            arrow = " ◄" if i == pred else ""
+            print(f"    {lbl:>12}  {bar:<{bar_max}}  {p*100:5.1f}%{arrow}")
+
+    print("\n  ⚠️  DISCLAIMER: This is a research model for portfolio/learning")
+    print("     purposes only. NOT financial advice. Always use proper")
+    print("     risk management before trading.")
+    print("═"*55 + "\n")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model",         required=True, help="Model name (e.g. LightGBM)")
+    parser.add_argument("--model-path",    default=None,  help="Local model file path")
+    parser.add_argument("--from-registry", action="store_true", help="Load from MLflow registry")
+    args = parser.parse_args()
+
+    cfg = load_config()
+
+    # Load feature columns
+    col_path = Path(cfg["data"]["processed_path"]).parent / "feature_columns.json"
+    with open(col_path) as f:
+        feature_cols = json.load(f)
+
+    if args.from_registry:
+        pred, proba, last_date = predict_from_registry(args.model, feature_cols, cfg)
+    elif args.model_path:
+        pred, proba, last_date = predict_sklearn(args.model_path, feature_cols, cfg)
+    else:
+        # Default: look for local file
+        default_path = Path(cfg["output"]["model_dir"]) / f"{args.model}_best.joblib"
+        if not default_path.exists():
+            raise FileNotFoundError(
+                f"Model file not found at {default_path}. "
+                "Pass --model-path or --from-registry."
+            )
+        pred, proba, last_date = predict_sklearn(str(default_path), feature_cols, cfg)
+
+    print_signal(pred, proba, last_date, args.model)
+
+
+if __name__ == "__main__":
+    main()
