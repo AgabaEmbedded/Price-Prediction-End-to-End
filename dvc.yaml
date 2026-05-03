@@ -1,0 +1,17 @@
+stages:
+  fetch_data:
+    cmd: python fetch_data.py
+    deps:
+      - fetch_data.py
+      - configs/config.yaml
+    outs:
+      - data
+  feature_engineering:
+    cmd: python feature_engineering.py
+    deps:
+      - feature_engineering.py
+      - data/processed_eurusd.parquet
+      - configs/config.yaml
+    #outs:
+      #- data/featured_eurusd.parquet
+      #- data/featured_columns.json

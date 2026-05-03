@@ -1,0 +1,34 @@
+schema: '2.0'
+stages:
+  fetch_data:
+    cmd: python fetch_data.py
+    deps:
+    - path: configs/config.yaml
+      hash: md5
+      md5: 8337051c22c1a553a532f7f5fda1bc30
+      size: 3712
+    - path: fetch_data.py
+      hash: md5
+      md5: c5991032c87a90f05edb9df342646c1d
+      size: 7151
+    outs:
+    - path: data
+      hash: md5
+      md5: 3721b1d73f40ff1908c731170fd16e04.dir
+      size: 155381
+      nfiles: 2
+  feature_engineering:
+    cmd: python feature_engineering.py
+    deps:
+    - path: configs/config.yaml
+      hash: md5
+      md5: 8337051c22c1a553a532f7f5fda1bc30
+      size: 3712
+    - path: data/processed_eurusd.parquet
+      hash: md5
+      md5: c62c3614d429c7fd24fd9e8faf15728d
+      size: 94296
+    - path: feature_engineering.py
+      hash: md5
+      md5: 53340170dae78cd6d6d51e6939ae2a1f
+      size: 18374

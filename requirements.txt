@@ -33,3 +33,4 @@ python-dotenv>=1.0.0           # For secrets (.env file)
 
 # Optional: feature importance / explainability
 shap>=0.45.0
+dvc>=2.0.0                      # Data version control (optional but recommended)
