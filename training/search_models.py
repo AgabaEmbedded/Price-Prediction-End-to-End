@@ -268,7 +268,7 @@ def main():
 
         for name, cls, kwargs in dl_configs:
             try:
-                r = search_dl_model(name, cls, {**kwargs, "n_features": n_features}, X_seq, y_seq, cfg)
+                r = search_dl_model(name, cls, {**kwargs}, X_seq, y_seq, cfg)
                 results.append(r)
             except Exception as e:
                 log.error(f"  {name} failed: {e}")
