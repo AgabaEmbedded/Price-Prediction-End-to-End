@@ -175,7 +175,7 @@ def search_dl_model(
     model = model_cls(n_features=X_train.shape[2], **model_kwargs).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=tc["learning_rate"])
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5)
-    criterion = nn.CrossEntropyLoss(weight=class_weights)
+    criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
 
     log.info(f"  Searching: {name}  (device={device})")
     t0 = time.time()
