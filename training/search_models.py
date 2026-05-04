@@ -117,6 +117,7 @@ def search_sklearn_model(
 
         elapsed = time.time() - t0
         metrics = {
+
             "cv_f1_macro_mean":          float(cv_results["test_f1_macro"].mean()),
             "cv_f1_macro_std":           float(cv_results["test_f1_macro"].std()),
             "cv_accuracy_mean":          float(cv_results["test_accuracy"].mean()),
@@ -126,6 +127,7 @@ def search_sklearn_model(
         }
         mlflow.log_metrics(metrics)
         mlflow.log_param("n_cv_folds", ms_cfg["cv_folds"])
+        mlflow.log_param("model", name)
 
         result = {"name": name, "type": "sklearn", **metrics}
         log.info(
@@ -187,6 +189,7 @@ def search_dl_model(
         mlflow.set_tag("stage", "model_search")
         mlflow.log_params({**model_kwargs, "batch_size": tc["batch_size"],
                            "lr": tc["learning_rate"]})
+        mlflow.log_param("model", name)
 
         for epoch in range(min(tc["max_epochs"], 30)):   # cap at 30 epochs for search
             model.train()
