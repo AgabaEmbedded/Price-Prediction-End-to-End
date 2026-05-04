@@ -29,7 +29,7 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from data.fetch_data import fetch_ohlcv, make_labels, preprocess
+from fetch.fetch_data import fetch_ohlcv, make_labels, preprocess
 from features.feature_engineering import engineer_features, get_feature_columns
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")

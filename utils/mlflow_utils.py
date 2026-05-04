@@ -50,7 +50,7 @@ def setup_mlflow(cfg: dict | None = None) -> mlflow.MlflowClient:
     mlflow.set_tracking_uri(tracking_uri)
 
     # Set S3 as default artifact root (MLflow reads this when creating experiments)
-    os.environ.setdefault("MLFLOW_S3_ENDPOINT_URL", "")  # leave blank for AWS default
+    #os.environ.setdefault("MLFLOW_S3_ENDPOINT_URL", "")  # leave blank for AWS default
     os.environ["MLFLOW_ARTIFACT_ROOT"] = mc["s3_artifact_uri"]
 
     # Create or get experiment
