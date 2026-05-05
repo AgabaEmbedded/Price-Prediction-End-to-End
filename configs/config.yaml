@@ -7,7 +7,7 @@
 # ── Data ──────────────────────────────────────
 data:
   ticker: "EURUSD=X"           # yfinance ticker for EUR/USD
-  start_date: "2025-01-01"     # Historical data start
+  start_date: "2010-01-01"     # Historical data start
   end_date: null               # null = today
   raw_path: "data/fetch/raw_eurusd.parquet"
   processed_path: "data/fetch/processed_eurusd.parquet"

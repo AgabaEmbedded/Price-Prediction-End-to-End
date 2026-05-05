@@ -343,8 +343,18 @@ DL_MODELS = {"LSTM", "BiLSTM", "Transformer"}
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", required=True, help="Model name from leaderboard")
+    parser.add_argument("--model", required=False, help="Model name from leaderboard")
     args = parser.parse_args()
+
+    if args.model is None:
+        if Path("search_leaderboard.csv").exists():
+            model = pd.read_csv("search_leaderboard.csv").iloc[0]["name"]
+            log.info(f"No model specified. Using best from HPO: {model}")
+            args.model = model
+        else:
+            log.error("No model specified and search_leaderboard.csv not found. Please run hyperparameter tuning first or specify a model.")
+            sys.exit(1)
+
 
     cfg       = load_config()
     hpo_cfg   = cfg["hpo"]
