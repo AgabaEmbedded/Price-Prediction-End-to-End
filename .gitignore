@@ -1,6 +1,5 @@
 /data
 /penv
 .env
-dvc.lock
 search_leaderboard.csv
 best_params.json
