@@ -63,9 +63,10 @@ DL_MODELS = {"LSTM", "BiLSTM", "Transformer"}
 
 def load_all_splits(cfg: dict):
     dc = cfg["data"]
-    feat_path = Path(dc["processed_path"]).parent / "featured_eurusd.parquet"
-    seq_path  = Path(dc["processed_path"]).parent / "sequences.npz"
-    col_path  = Path(dc["processed_path"]).parent / "feature_columns.json"
+    fc = cfg["features"]
+    feat_path = Path(fc["featured_path"]) / "featured_eurusd.parquet"
+    seq_path  = Path(fc["featured_path"]) / "sequences.npz"
+    col_path  = Path(fc["featured_path"]) / "feature_columns.json"
 
     df = pd.read_parquet(feat_path)
     with open(col_path) as f:
@@ -358,18 +359,30 @@ def _compute_metrics(y_true, y_pred, prefix: str) -> dict:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model",         required=True, help="Model name")
+    parser.add_argument("--model",         required=False, help="Model name")
     parser.add_argument("--no-hpo-params", action="store_true",
                         help="Skip loading HPO params — use default hyperparameters")
+    
     args = parser.parse_args()
-
+    
     cfg = load_config()
     setup_mlflow(cfg)
+
+    if args.model is None:
+        if Path("search_leaderboard.csv").exists():
+            model = pd.read_csv("search_leaderboard.csv").iloc[0]["name"]
+            log.info(f"No model specified. Using best from HPO: {model}")
+            args.model = model
+        else:
+            log.error("No model specified and search_leaderboard.csv not found. Please run hyperparameter tuning first or specify a model.")
+            sys.exit(1)
+        
+    print(args.model)   
 
     # Load best params if available
     best_params = None
     if not args.no_hpo_params:
-        param_file = Path(f"best_params_{args.model}.json")
+        param_file = Path(f"best_params.json")
         if param_file.exists():
             with open(param_file) as f:
                 best_params = json.load(f)["params"]

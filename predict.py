@@ -127,7 +127,7 @@ def main():
     cfg = load_config()
 
     # Load feature columns
-    col_path = Path(cfg["data"]["processed_path"]).parent / "feature_columns.json"
+    col_path = Path(cfg["features"]["featured_path"]) / "feature_columns.json"
     with open(col_path) as f:
         feature_cols = json.load(f)
 

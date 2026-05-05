@@ -396,7 +396,7 @@ def main():
     log.info(f"  Best params: {best_trial.params}")
 
     # Save best params to JSON for use by train_final.py
-    best_params_path = Path(f"best_params_{args.model}.json")
+    best_params_path = Path(f"best_params.json")
     with open(best_params_path, "w") as f:
         json.dump({"model": args.model, "params": best_trial.params, "val_f1": best_trial.value}, f, indent=2)
     log.info(f"  Best params saved → {best_params_path}")

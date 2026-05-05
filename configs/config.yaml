@@ -58,7 +58,7 @@ mlflow:
   # If you run an MLflow tracking server on EC2, put its URL here.
   # For local tracking backed by S3, leave as "local" — artifacts
   # still go to S3 but the sqlite DB lives locally.
-  tracking_uri: "http://ec2-13-48-129-89.eu-north-1.compute.amazonaws.com:5000/"           # or "http://your-ec2:5000"
+  tracking_uri: "local"#http://ec2-13-48-129-89.eu-north-1.compute.amazonaws.com:5000/"           # or "http://your-ec2:5000"
   local_db_path: "mlflow.db"      # used when tracking_uri == "local"
 
   experiment_name: "Price_prediction"
@@ -73,7 +73,7 @@ model_search:
 # ── Hyperparameter Tuning ─────────────────────
 hpo:
   framework: "optuna"
-  n_trials: 50
+  n_trials: 5
   timeout: 3600         # seconds (1 hour)
   cv_folds: 5
   scoring: "f1_macro"

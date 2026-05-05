@@ -15,12 +15,44 @@ stages:
       - configs/config.yaml
     outs:
       - data/features/featured_eurusd.parquet
-      - data/features/featured_columns.json
-      - data/features/sequence_data.npz
+      - data/features/feature_columns.json
+      - data/features/sequences.npz
   model_search:
-    cmd: python training/search_model.py
+    cmd: python training/search_models.py
     deps:
-      - training/search_model.py
+      - training/search_models.py
       - data/features/featured_eurusd.parquet
-      - data/features/featured_columns.json
+      - data/features/feature_columns.json
       - configs/config.yaml
+    outs:
+      - search_leaderboard.csv
+      
+  hyperparameter_tuning:
+    cmd: python training/hyperparameter_tuning.py --model RandomForest 
+    deps:
+      - training/hyperparameter_tuning.py
+      - data/features/featured_eurusd.parquet
+      - data/features/feature_columns.json
+      - configs/config.yaml
+    outs:
+      - best_params.json
+      
+  final_training:
+    cmd: python training/train_final.py
+    deps:
+      - training/train_final.py
+      - data/features/featured_eurusd.parquet
+      - data/features/feature_columns.json
+      - best_params.json
+      - configs/config.yaml
+    outs:
+      - saved_models
+      
+  prediction:
+    cmd: python prediction/predict.py
+    deps:
+      - prediction/predict.py
+      - data/features/featured_eurusd.parquet
+      - data/features/feature_columns.json
+      - configs/config.yaml
+    
