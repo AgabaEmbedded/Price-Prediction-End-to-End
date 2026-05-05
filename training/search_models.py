@@ -55,9 +55,10 @@ log = logging.getLogger(__name__)
 def load_train_data(cfg: dict):
     """Load train+val tabular data and sequence arrays."""
     dc = cfg["data"]
-    feat_path = Path(dc["processed_path"]).parent / "featured_eurusd.parquet"
-    seq_path  = Path(dc["processed_path"]).parent / "sequences.npz"
-    col_path  = Path(dc["processed_path"]).parent / "feature_columns.json"
+    fc = cfg["features"]
+    feat_path = Path(fc["featured_path"]) / "featured_eurusd.parquet"
+    seq_path  = Path(fc["featured_path"]) / "sequences.npz"
+    col_path  = Path(fc["featured_path"]) / "feature_columns.json"
 
     if not feat_path.exists():
         raise FileNotFoundError(f"{feat_path} not found. Run features/feature_engineering.py first.")

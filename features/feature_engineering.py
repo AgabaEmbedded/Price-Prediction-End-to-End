@@ -353,6 +353,8 @@ def main():
     fc  = cfg["features"]
 
     proc_path = Path(dc["processed_path"])
+    out_path = Path(fc["featured_path"])
+    out_path.mkdir(exist_ok=True)     
     if not proc_path.exists():
         raise FileNotFoundError(f"{proc_path} not found. Run data/fetch_data.py first.")
 
@@ -365,13 +367,13 @@ def main():
     log.info(f"Total features engineered: {len(feature_cols)}")
 
     # Save the full featured dataset
-    feat_path = proc_path.parent / "featured_eurusd.parquet"
+    feat_path = out_path / "featured_eurusd.parquet"
     feat_df.to_parquet(feat_path)
     log.info(f"Featured dataset saved → {feat_path}")
 
     # Save feature column list
     import json
-    col_path = proc_path.parent / "feature_columns.json"
+    col_path = out_path / "feature_columns.json"
     with open(col_path, "w") as f:
         json.dump(feature_cols, f, indent=2)
     log.info(f"Feature column list saved → {col_path}")
@@ -380,7 +382,7 @@ def main():
     seq_len = fc["sequence_length"]
     X_seq, y_seq, dates_seq = build_sequences(feat_df, feature_cols, "label", seq_len)
 
-    seq_path = proc_path.parent / "sequences.npz"
+    seq_path = out_path / "sequences.npz"
     np.savez_compressed(seq_path, X=X_seq, y=y_seq, dates=dates_seq.astype(str))
     log.info(f"Sequence arrays saved → {seq_path}  (shape: {X_seq.shape})")
 

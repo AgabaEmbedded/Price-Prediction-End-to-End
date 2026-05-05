@@ -1,17 +1,26 @@
 stages:
   fetch_data:
-    cmd: python fetch_data.py
+    cmd: python fetch/fetch_data.py
     deps:
-      - fetch_data.py
+      - fetch/fetch_data.py
       - configs/config.yaml
     outs:
-      - data
+      - data/fetch/processed_eurusd.parquet
+      - data/fetch/raw_eurusd.parquet
   feature_engineering:
-    cmd: python feature_engineering.py
+    cmd: python features/feature_engineering.py
     deps:
-      - feature_engineering.py
-      - data/processed_eurusd.parquet
+      - features/feature_engineering.py
+      - data/fetch/processed_eurusd.parquet
       - configs/config.yaml
-    #outs:
-      #- data/featured_eurusd.parquet
-      #- data/featured_columns.json
+    outs:
+      - data/features/featured_eurusd.parquet
+      - data/features/featured_columns.json
+      - data/features/sequence_data.npz
+  model_search:
+    cmd: python training/search_model.py
+    deps:
+      - training/search_model.py
+      - data/features/featured_eurusd.parquet
+      - data/features/featured_columns.json
+      - configs/config.yaml
