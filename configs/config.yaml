@@ -68,7 +68,7 @@ mlflow:
 
 # ── Model Search ──────────────────────────────
 model_search:
-  cv_folds: 5           # TimeSeriesSplit folds
+  cv_folds: 50           # TimeSeriesSplit folds
   scoring: "f1_macro"   # Primary metric for model selection
   n_jobs: -1            # Parallelism (-1 = all cores)
   include_deep_learning: true   # Set false to skip PyTorch models
