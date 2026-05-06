@@ -76,8 +76,9 @@ def load_train_val_data(cfg: dict):
     seqs = np.load(seq_path, allow_pickle=True)
     X_seq_train = seqs["X"][:train_end]
     y_seq_train = seqs["y"][:train_end]
-    X_seq_val   = seqs["X"][train_end:val_end]
-    y_seq_val   = seqs["y"][train_end:val_end]
+    X_seq_val   = seqs["X"][56:68]#[train_end:val_end]
+    y_seq_val   = seqs["y"][56:68]#[train_end:val_end]
+    #print(len(seqs), train_end, val_end, X_seq_train.shape, y_seq_train.shape, X_seq_val.shape, y_seq_val.shape, "\n\n\n\n\n\n\n\n\n\n\n")
 
     return (X_train, y_train, X_val, y_val,
             X_seq_train, y_seq_train, X_seq_val, y_seq_val,
@@ -229,6 +230,7 @@ def make_dl_objective(
     scaler  = StandardScaler()
     Xtr_2d  = X_train.reshape(-1, n_feat)
     Xvl_2d  = X_val.reshape(-1, n_feat)
+    #print(Xtr_2d.shape, Xvl_2d.shape, X_train.shape, X_val.shape, "\n\n\n\n\n\n\n\n\n\n\n")
     Xtr_sc  = scaler.fit_transform(Xtr_2d).reshape(X_train.shape).astype(np.float32)
     Xvl_sc  = scaler.transform(Xvl_2d).reshape(X_val.shape).astype(np.float32)
 

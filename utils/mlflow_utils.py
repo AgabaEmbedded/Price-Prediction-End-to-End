@@ -17,7 +17,13 @@ import os
 import logging
 import yaml
 import mlflow
+import dagshub
+
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
+DAGSHUB_KEY = os.getenv("DAGSHUB_KEY")
 
 log = logging.getLogger(__name__)
 
@@ -38,29 +44,38 @@ def setup_mlflow(cfg: dict | None = None) -> mlflow.MlflowClient:
 
     mc = cfg["mlflow"]
 
-    if mc["tracking_uri"] == "local":
+    if mc["location"] == "local":
         # Local sqlite-backed tracking, artifacts on S3
         db_path = Path(mc["local_db_path"]).resolve()
         tracking_uri = f"sqlite:///{db_path}"
         log.info(f"MLflow tracking: local SQLite @ {db_path}")
-    else:
+        mlflow.set_tracking_uri(tracking_uri)
+    elif mc["location"] == "aws":
         tracking_uri = mc["tracking_uri"]
         log.info(f"MLflow tracking: remote server @ {tracking_uri}")
+        mlflow.set_tracking_uri(tracking_uri)
+        os.environ["MLFLOW_ARTIFACT_ROOT"] = mc["s3_artifact_uri"]
+        
+    elif mc["location"] == "dagshub":
+        dagshub.auth.add_app_token(DAGSHUB_KEY)
+        dagshub.init(repo_owner=mc['repo_owner'], repo_name=mc['repo_name'], mlflow=True)
+        # Use DagsHub's default location instead of forcing an S3 URI
+        artifact_loc = None 
+    else:
+        artifact_loc = mc["s3_artifact_uri"]
 
-    mlflow.set_tracking_uri(tracking_uri)
-
-    # Set S3 as default artifact root (MLflow reads this when creating experiments)
-    #os.environ.setdefault("MLFLOW_S3_ENDPOINT_URL", "")  # leave blank for AWS default
-    os.environ["MLFLOW_ARTIFACT_ROOT"] = mc["s3_artifact_uri"]
+    exp = mlflow.get_experiment_by_name(exp_name)
+    if exp is None:
+        # If artifact_loc is None, MLflow uses the tracking server's default
+        exp_id = mlflow.create_experiment(name=exp_name, artifact_location=artifact_loc)
+    
 
     # Create or get experiment
     exp_name = mc["experiment_name"]
     exp = mlflow.get_experiment_by_name(exp_name)
     if exp is None:
-        exp_id = mlflow.create_experiment(
-            name=exp_name,
-            artifact_location=mc["s3_artifact_uri"],
-        )
+        # If artifact_loc is None, MLflow uses the tracking server's default
+        exp_id = mlflow.create_experiment(name=exp_name)
         log.info(f"Created MLflow experiment '{exp_name}'  (id={exp_id})")
     else:
         log.info(f"Using existing MLflow experiment '{exp_name}'  (id={exp.experiment_id})")

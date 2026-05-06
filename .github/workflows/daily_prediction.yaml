@@ -1,0 +1,34 @@
+name: Daily Signal Prediction
+on:
+  schedule:
+    # 00:00 UTC
+    - cron: '0 0 * * *'
+    - push:
+        branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Prediction
+        env:
+          MLFLOW_TRACKING_URI: https://dagshub.com/${{ github.repository }}.mlflow
+          MLFLOW_TRACKING_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
+          # Email secrets for your send_email function
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
+        run: python predict.py --model LightGBM --from-registry

@@ -289,7 +289,9 @@ def engineer_features(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     #   Then merge on date index and add lag/ratio features.
 
     # ── Drop NaN rows created by rolling windows ─────────────────────────────
+    
     before = len(feat)
+    feat.to_csv("data/features/featured_eurusd.csv", index=False)
     feat = feat.dropna()
     log.info(f"  Dropped {before - len(feat)} NaN rows → {len(feat)} rows remain")
 

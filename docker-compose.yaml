@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  price-app:
+    image: agabaembedded/price-pred-app:latest
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env  # This automatically looks for a file named .env in the same folder
+    restart: always

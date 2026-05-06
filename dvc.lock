@@ -5,8 +5,8 @@ stages:
     deps:
     - path: configs/config.yaml
       hash: md5
-      md5: 049de0599370252b509ae141ac4143cc
-      size: 3830
+      md5: fad332221394f4312ba943321ed4d4b8
+      size: 3823
     - path: fetch/fetch_data.py
       hash: md5
       md5: c5991032c87a90f05edb9df342646c1d
@@ -14,27 +14,27 @@ stages:
     outs:
     - path: data/fetch/processed_eurusd.parquet
       hash: md5
-      md5: ffd80525fe013eac81e7726f3fdcbcde
-      size: 24252
+      md5: 89a4130a0316d66f630b2a953bbd799d
+      size: 235714
     - path: data/fetch/raw_eurusd.parquet
       hash: md5
-      md5: ee1785bb5a97de5801611c8757c10b70
-      size: 16084
+      md5: 2f3483a2521c1a3f97f87a0d3cdcb55b
+      size: 150795
   feature_engineering:
     cmd: python features/feature_engineering.py
     deps:
     - path: configs/config.yaml
       hash: md5
-      md5: 049de0599370252b509ae141ac4143cc
-      size: 3830
+      md5: fad332221394f4312ba943321ed4d4b8
+      size: 3823
     - path: data/fetch/processed_eurusd.parquet
       hash: md5
-      md5: ffd80525fe013eac81e7726f3fdcbcde
-      size: 24252
+      md5: 89a4130a0316d66f630b2a953bbd799d
+      size: 235714
     - path: features/feature_engineering.py
       hash: md5
-      md5: 840771937c8e7d8d564962a3ef83f060
-      size: 18430
+      md5: 4b82bae4cf86ed6a3d88a056f2157da1
+      size: 18523
     outs:
     - path: data/features/feature_columns.json
       hash: md5
@@ -42,27 +42,27 @@ stages:
       size: 2170
     - path: data/features/featured_eurusd.parquet
       hash: md5
-      md5: 0d7fb7b94be9c2c916ccb7ca9c939135
-      size: 204431
+      md5: bc4b2a554e271c7a12925dad2e0450ac
+      size: 148731
     - path: data/features/sequences.npz
       hash: md5
-      md5: a0964604a4b6b087ac89d6606e8a4594
-      size: 62870
+      md5: 059d0927781bb9841ff7ce27e6bb565e
+      size: 33320
   model_search:
     cmd: python training/search_models.py
     deps:
     - path: configs/config.yaml
       hash: md5
-      md5: 049de0599370252b509ae141ac4143cc
-      size: 3830
+      md5: fad332221394f4312ba943321ed4d4b8
+      size: 3823
     - path: data/features/feature_columns.json
       hash: md5
       md5: 7041aceb6fdf2910b2bb6aaaab0dc671
       size: 2170
     - path: data/features/featured_eurusd.parquet
       hash: md5
-      md5: 0d7fb7b94be9c2c916ccb7ca9c939135
-      size: 204431
+      md5: bc4b2a554e271c7a12925dad2e0450ac
+      size: 148731
     - path: training/search_models.py
       hash: md5
       md5: 2afe3d721f03e2c9470c891c2bf7efc9
@@ -70,8 +70,8 @@ stages:
     outs:
     - path: search_leaderboard.csv
       hash: md5
-      md5: 64569036466b474cae2e4a555c85006b
-      size: 1255
+      md5: d605cfb7e0f677453d5020a9927bd6dc
+      size: 1228
   hyperparameter_tuning:
     cmd: python training/hyperparameter_tuning.py --model RandomForest
     deps:

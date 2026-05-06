@@ -31,6 +31,7 @@ import yaml
 
 from fetch.fetch_data import fetch_ohlcv, make_labels, preprocess
 from features.feature_engineering import engineer_features, get_feature_columns
+from utils.email_utils import send_email
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
@@ -78,12 +79,12 @@ def predict_sklearn(model_path: str, feature_cols: list[str], cfg: dict):
     return pred, proba, last_date
 
 
-def predict_from_registry(model_name: str, feature_cols: list[str], cfg: dict):
+def predict_from_registry(feature_cols: list[str], cfg: dict):
     import mlflow
     from utils.mlflow_utils import setup_mlflow
     setup_mlflow(cfg)
 
-    registered_name = f"eurusd_{model_name.lower()}"
+    registered_name = f"eurusd_model"
     model_uri = f"models:/{registered_name}/latest"
     log.info(f"Loading model from registry: {model_uri}")
     model = mlflow.pyfunc.load_model(model_uri)
@@ -94,10 +95,10 @@ def predict_from_registry(model_name: str, feature_cols: list[str], cfg: dict):
     return pred, None, last_date
 
 
-def print_signal(pred: int, proba: np.ndarray | None, last_date, model_name: str):
+def print_signal(pred: int, proba: np.ndarray | None, last_date):
     print("\n" + "═"*55)
     print(f"  EUR/USD DAILY SIGNAL  —  {datetime.today().strftime('%A %d %b %Y')}")
-    print(f"  Model: {model_name}  |  Based on data up to: {last_date.date()}")
+    print(f"  Model: Registry Latest  |  Based on data up to: {last_date.date()}")
     print("═"*55)
     print(f"\n  📊  SIGNAL:  {SIGNAL_NAMES[pred]}")
     print(f"  📌  ACTION:  {SIGNAL_ACTIONS[pred]}\n")
@@ -111,18 +112,48 @@ def print_signal(pred: int, proba: np.ndarray | None, last_date, model_name: str
             arrow = " ◄" if i == pred else ""
             print(f"    {lbl:>12}  {bar:<{bar_max}}  {p*100:5.1f}%{arrow}")
 
-    print("\n  ⚠️  DISCLAIMER: This is a research model for portfolio/learning")
-    print("     purposes only. NOT financial advice. Always use proper")
+    print("\n  ⚠️  DISCLAIMER: This is a research model")
+    print("     NOT financial advice. Always use proper")
     print("     risk management before trading.")
     print("═"*55 + "\n")
 
 
+def get_signal_message(pred: int, proba: np.ndarray | None, last_date) -> str:
+    lines = []
+    
+    border = "═" * 30
+    lines.append(border)
+    lines.append(f"   EUR/USD DAILY SIGNAL  —  {datetime.today().strftime('%A %d %b %Y')}")
+    lines.append(f"   Model: Registry Latest  |  Based on data up to: {last_date.date()}")
+    lines.append(border)
+    
+    lines.append(f"\n   📊  SIGNAL:  {SIGNAL_NAMES[pred]}")
+    lines.append(f"   📌  ACTION:  {SIGNAL_ACTIONS[pred]}\n")
+
+    if proba is not None:
+        lines.append("   Probability breakdown:")
+        labels = ["Strong Sell", "Sell", "Hold", "Buy", "Strong Buy"]
+        bar_max = 30
+        for i, (lbl, p) in enumerate(zip(labels, proba)):
+            bar = "█" * int(p * bar_max)
+            arrow = " ◄" if i == pred else ""
+            lines.append(f"    {lbl:>12}  {bar:<{bar_max}}  {p*100:5.1f}%{arrow}")
+
+    lines.append("\n   ⚠️  DISCLAIMER: This is a research model for portfolio/learning")
+    lines.append("     purposes only. NOT financial advice. Always use proper")
+    lines.append("     risk management before trading.")
+    lines.append(border)
+
+    # Combine everything into one string
+    return "\n".join(lines)
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model",         required=True, help="Model name (e.g. LightGBM)")
+    #parser.add_argument("--model",         required=False, help="Model name (e.g. LightGBM)")
     parser.add_argument("--model-path",    default=None,  help="Local model file path")
     parser.add_argument("--from-registry", action="store_true", help="Load from MLflow registry")
     args = parser.parse_args()
+
 
     cfg = load_config()
 
@@ -132,7 +163,7 @@ def main():
         feature_cols = json.load(f)
 
     if args.from_registry:
-        pred, proba, last_date = predict_from_registry(args.model, feature_cols, cfg)
+        pred, proba, last_date = predict_from_registry(feature_cols, cfg)
     elif args.model_path:
         pred, proba, last_date = predict_sklearn(args.model_path, feature_cols, cfg)
     else:
@@ -145,8 +176,11 @@ def main():
             )
         pred, proba, last_date = predict_sklearn(str(default_path), feature_cols, cfg)
 
-    print_signal(pred, proba, last_date, args.model)
+    message = get_signal_message(pred, proba, last_date)
+    print_signal(pred, proba, last_date)
+    send_email(message)
 
 
 if __name__ == "__main__":
     main()
+

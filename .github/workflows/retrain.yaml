@@ -1,0 +1,53 @@
+name: Retrain Model
+on:
+  schedule:
+    # 22:00 UTC is 10 PM. Note: GitHub Actions uses UTC.
+    - cron: '0 22 * * 0'
+    - push:
+        branches: [ "main" ]
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install dvc[s3] dagshub mlflow
+          pip install -r requirements.txt
+
+      - name: Setup DVC
+        env:
+          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+        run: |
+          dvc remote add origin --local https://dagshub.com/${{ github.repository }}.dvc
+          dvc remote modify origin --local auth basic
+          dvc remote modify origin --local user $DAGSHUB_USERNAME
+          dvc remote modify origin --local password $DAGSHUB_TOKEN
+          dvc pull -r origin
+
+      - name: Reproduce Pipeline
+        env:
+          MLFLOW_TRACKING_URI: https://dagshub.com/${{ github.repository }}.mlflow
+          MLFLOW_TRACKING_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
+        run: dvc repro
+
+      - name: Push Results
+        run: |
+          dvc push -r origin
+          # Optional: Git commit updated dvc.lock if it changed
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add dvc.lock
+          git commit -m "Automated retrain: updated dvc.lock" || echo "No changes to commit"
+          git push

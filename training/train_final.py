@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import argparse
 import json
+import dagshub
 import logging
 import warnings
 from pathlib import Path
@@ -376,8 +377,6 @@ def main():
         else:
             log.error("No model specified and search_leaderboard.csv not found. Please run hyperparameter tuning first or specify a model.")
             sys.exit(1)
-        
-    print(args.model)   
 
     # Load best params if available
     best_params = None
@@ -488,7 +487,7 @@ def main():
             mlflow.sklearn.log_model(
                 model,
                 artifact_path="model_sklearn",
-                registered_model_name=f"eurusd_{args.model.lower()}",
+                registered_model_name=f"eurusd_model",
             )
             # Also save locally
             import joblib

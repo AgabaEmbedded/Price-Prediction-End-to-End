@@ -17,9 +17,28 @@ stages:
       - data/features/featured_eurusd.parquet
       - data/features/feature_columns.json
       - data/features/sequences.npz
+  model_search:
+    cmd: python training/search_models.py
+    deps:
+      - training/search_models.py
+      - data/features/featured_eurusd.parquet
+      - data/features/feature_columns.json
+      - configs/config.yaml
+    outs:
+      - search_leaderboard.csv
+      
+  hyperparameter_tuning:
+    cmd: python training/hyperparameter_tuning.py 
+    deps:
+      - training/hyperparameter_tuning.py
+      - data/features/featured_eurusd.parquet
+      - data/features/feature_columns.json
+      - configs/config.yaml
+    outs:
+      - best_params.json
       
   final_training:
-    cmd: python training/train_final.py --model LogisticRegression
+    cmd: python training/train_final.py
     deps:
       - training/train_final.py
       - data/features/featured_eurusd.parquet
