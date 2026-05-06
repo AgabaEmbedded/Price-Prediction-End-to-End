@@ -29,11 +29,5 @@ stages:
     outs:
       - saved_models
       
-  prediction:
-    cmd: python predict.py
-    deps:
-      - predict.py
-      - data/features/featured_eurusd.parquet
-      - data/features/feature_columns.json
-      - configs/config.yaml
+
     
