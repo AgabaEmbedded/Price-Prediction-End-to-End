@@ -95,28 +95,29 @@ jobs:
           host: ${{ env.EC2_HOST }}
           username: ${{ env.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          # 1. Add the AWS keys to the 'envs' list here
-          envs: IMAGE_NAME, REGISTRY, REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+          # Only pass the variables needed for the logic
+          envs: IMAGE_NAME, REGISTRY, REGION
           script: |
-            # 2. Export them so the AWS CLI can see them
-            export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-            export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-            export AWS_DEFAULT_REGION=$REGION
+            # 1. Navigate to the folder where your compose.yaml is
+            cd /home/ubuntu
             
-            # 3. Now the login command will work because the "keys" are present
+            # 2. Login using the EC2's IAM Role (No keys needed!)
             aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REGISTRY
             
+            # 3. Stop and remove the OLD container (using its name)
+            # Make sure this name matches the 'container_name' in your compose.yaml
             docker stop price-pred-app || true
             docker rm price-pred-app || true
-            docker pull $IMAGE_NAME
+            
+            # 4. Pull and launch
             export IMAGE_NAME=$IMAGE_NAME
+            docker pull $IMAGE_NAME
             docker compose up -d
+            
+            # 5. Clean up old images to save disk space
             docker image prune -f
         env:
           IMAGE_NAME: ${{ needs.push-to-ecr.outputs.full_image }}
           REGISTRY: ${{ needs.push-to-ecr.outputs.registry }}
           REGION: ${{ env.AWS_REGION }}
-          # 4. Pull the secrets from GitHub into the Action environment
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           
