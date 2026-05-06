@@ -68,7 +68,7 @@ mlflow:
 
 # ── Model Search ──────────────────────────────
 model_search:
-  cv_folds: 50           # TimeSeriesSplit folds
+  cv_folds: 5           # TimeSeriesSplit folds
   scoring: "f1_macro"   # Primary metric for model selection
   n_jobs: -1            # Parallelism (-1 = all cores)
   include_deep_learning: true   # Set false to skip PyTorch models
@@ -76,7 +76,7 @@ model_search:
 # ── Hyperparameter Tuning ─────────────────────
 hpo:
   framework: "optuna"
-  n_trials: 5
+  n_trials: 50
   timeout: 3600         # seconds (1 hour)
   cv_folds: 5
   scoring: "f1_macro"

@@ -1,8 +1,11 @@
 {
-  "model": "LogisticRegression",
+  "model": "RandomForest",
   "params": {
-    "C": 0.39079671568228835,
-    "solver": "lbfgs"
+    "n_estimators": 159,
+    "max_depth": 5,
+    "min_samples_split": 11,
+    "min_samples_leaf": 1,
+    "max_features": 0.5
   },
-  "val_f1": 0.4750081222823118
+  "val_f1": 0.5771709526105591
 }

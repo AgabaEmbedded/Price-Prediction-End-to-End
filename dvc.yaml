@@ -19,7 +19,7 @@ stages:
       - data/features/sequences.npz
       
   final_training:
-    cmd: python training/train_final.py --model LogisticRegression
+    cmd: python training/train_final.py --model RandomForest
     deps:
       - training/train_final.py
       - data/features/featured_eurusd.parquet
