@@ -1,0 +1,8 @@
+{
+  "model": "LogisticRegression",
+  "params": {
+    "C": 0.39079671568228835,
+    "solver": "lbfgs"
+  },
+  "val_f1": 0.4750081222823118
+}
