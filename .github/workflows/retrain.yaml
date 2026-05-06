@@ -30,7 +30,6 @@ jobs:
           DAGSHUB_KEY : ${{ secrets.DAGSHUB_TOKEN }}
           APP_PASSWORD : ${{ secrets.EMAIL_PASSWORD }}
         run: | 
-          dvc init
           dvc repro
 
       
