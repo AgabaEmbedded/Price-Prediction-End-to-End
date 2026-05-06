@@ -63,15 +63,12 @@ def setup_mlflow(cfg: dict | None = None) -> mlflow.MlflowClient:
         artifact_loc = None 
     else:
         artifact_loc = mc["s3_artifact_uri"]
-
-    exp = mlflow.get_experiment_by_name(exp_name)
-    if exp is None:
-        # If artifact_loc is None, MLflow uses the tracking server's default
-        exp_id = mlflow.create_experiment(name=exp_name, artifact_location=artifact_loc)
+    exp_name = mc["experiment_name"]
+    
     
 
     # Create or get experiment
-    exp_name = mc["experiment_name"]
+    
     exp = mlflow.get_experiment_by_name(exp_name)
     if exp is None:
         # If artifact_loc is None, MLflow uses the tracking server's default

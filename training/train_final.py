@@ -491,7 +491,7 @@ def main():
             )
             # Also save locally
             import joblib
-            model_path = model_dir / f"{args.model}_best.joblib"
+            model_path = model_dir / f"model_best.joblib"
             joblib.dump({
                 "model":        model,
                 "feature_cols": feature_cols,

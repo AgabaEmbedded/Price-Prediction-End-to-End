@@ -106,8 +106,8 @@ jobs:
             
             # 3. Stop and remove the OLD container (using its name)
             # Make sure this name matches the 'container_name' in your compose.yaml
-            docker stop price-pred-app || true
-            docker rm price-pred-app || true
+            docker stop ubuntu-price-app-1 || true
+            docker rm ubuntu-price-app-1 || true
             
             # 4. Pull and launch
             export IMAGE_NAME=$IMAGE_NAME

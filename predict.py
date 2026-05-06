@@ -168,7 +168,7 @@ def main():
         pred, proba, last_date = predict_sklearn(args.model_path, feature_cols, cfg)
     else:
         # Default: look for local file
-        default_path = Path(cfg["output"]["model_dir"]) / f"{args.model}_best.joblib"
+        default_path = Path(cfg["output"]["model_dir"]) / "model_best.joblib"
         if not default_path.exists():
             raise FileNotFoundError(
                 f"Model file not found at {default_path}. "
