@@ -4,7 +4,7 @@ on:
     # 22:00 UTC is 10 PM. Note: GitHub Actions uses UTC.
     #- cron: '0 22 * * 0'
     - push:
-        branches: [ "main" ]
+      branches: [ "main" ]
   workflow_dispatch: # Allows manual triggering
 
 jobs:
