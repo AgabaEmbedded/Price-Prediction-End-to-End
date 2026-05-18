@@ -6,12 +6,12 @@
 
 # ── Data ──────────────────────────────────────
 data:
-  ticker: "ETH-USD"           # yfinance ticker for EUR/USD
-  timeframe: "1h"              # Data granularity (e.g., 1d, 1h)
-  start_date: "2024-09-01"     # Historical data start
+  ticker: "EURUSD=X" #"GC=F"  #"XAUUSD=X"            yfinance ticker for EUR/USD
+  timeframe: "1d"              # Data granularity (e.g., 1d, 1h)
+  start_date: "2010-01-01"     # Historical data start
   end_date: null               # null = today
-  raw_path: "data/fetch/raw_ethusd.parquet"
-  processed_path: "data/fetch/processed_ethusd.parquet"
+  raw_path: "data/fetch/raw_eurusd.parquet"
+  processed_path: "data/fetch/processed_eurusd.parquet"
 
   # Label thresholds (fraction of daily return)
   # Returns > strong_threshold  → Strong Buy  (4)
@@ -20,7 +20,7 @@ data:
   # Returns < -weak_threshold   → Sell        (1)
   # Returns < -strong_threshold → Strong Sell (0)
   strong_threshold: 0.005   # 0.5%
-  weak_threshold: 0.001     # 0.1%
+  weak_threshold: 0.001   # 0.1%
 
   # Train/Val/Test split (chronological — no shuffle)
   train_ratio: 0.70
@@ -45,7 +45,7 @@ features:
   # Lag features (look-back steps)
   lag_periods: [1, 2, 3, 5, 10, 21]
   # Rolling statistics windows
-  rolling_windows: [5, 10, 21]
+  rolling_windows: [15, 30, 63]
   # Sequence length for LSTM/Transformer
   sequence_length: 30
   featured_path : "data/features"

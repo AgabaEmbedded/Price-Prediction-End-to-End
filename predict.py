@@ -179,7 +179,7 @@ def main():
 
     message = get_signal_message(pred, proba, last_date)
     print_signal(pred, proba, last_date)
-    run_trading_cycle(TRADE_DIRECTIONS[pred])
+    #run_trading_cycle(TRADE_DIRECTIONS[pred])
     send_email(message)
 
 
