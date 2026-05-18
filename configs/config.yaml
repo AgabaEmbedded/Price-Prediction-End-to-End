@@ -6,11 +6,12 @@
 
 # ── Data ──────────────────────────────────────
 data:
-  ticker: "EURUSD=X"           # yfinance ticker for EUR/USD
-  start_date: "2010-01-01"     # Historical data start
+  ticker: "ETH-USD"           # yfinance ticker for EUR/USD
+  timeframe: "1h"              # Data granularity (e.g., 1d, 1h)
+  start_date: "2024-09-01"     # Historical data start
   end_date: null               # null = today
-  raw_path: "data/fetch/raw_eurusd.parquet"
-  processed_path: "data/fetch/processed_eurusd.parquet"
+  raw_path: "data/fetch/raw_ethusd.parquet"
+  processed_path: "data/fetch/processed_ethusd.parquet"
 
   # Label thresholds (fraction of daily return)
   # Returns > strong_threshold  → Strong Buy  (4)

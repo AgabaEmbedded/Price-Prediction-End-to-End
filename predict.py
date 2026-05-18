@@ -32,10 +32,11 @@ import yaml
 from fetch.fetch_data import fetch_ohlcv, make_labels, preprocess
 from features.feature_engineering import engineer_features, get_feature_columns
 from utils.email_utils import send_email
+from utils.trade_utils import run_trading_cycle
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
-
+TRADE_DIRECTIONS = {0: "SELL", 1: "SELL", 2: "HOLD", 3: "BUY", 4: "BUY"}
 SIGNAL_NAMES   = {0: "STRONG SELL 🔴", 1: "SELL 🟠", 2: "HOLD ⚪", 3: "BUY 🟢", 4: "STRONG BUY 💚"}
 SIGNAL_ACTIONS = {0: "SHORT — large downward move expected",
                   1: "SHORT — small downward move expected",
@@ -178,6 +179,7 @@ def main():
 
     message = get_signal_message(pred, proba, last_date)
     print_signal(pred, proba, last_date)
+    run_trading_cycle(TRADE_DIRECTIONS[pred])
     send_email(message)
 
 

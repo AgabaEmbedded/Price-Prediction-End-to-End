@@ -31,4 +31,8 @@ COPY . .
 EXPOSE 8000
 
 # Command to run the application using uvicorn
-CMD ["python", "app.py"]
+#CMD ["python", "app.py"]
+CMD python fetch/fetch_data.py && \
+    python features/feature_engineering.py && \
+    python predict.py --from-registry && \
+    python app.py

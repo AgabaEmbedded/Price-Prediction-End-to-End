@@ -44,11 +44,11 @@ def load_config(path: str = "configs/config.yaml") -> dict:
 
 # ── Fetch ─────────────────────────────────────────────────────────────────────
 
-def fetch_ohlcv(ticker: str, start: str, end: str | None) -> pd.DataFrame:
+def fetch_ohlcv(ticker: str, start: str, end: str | None, interval: str = "1d") -> pd.DataFrame:
     """Download daily OHLCV from yfinance."""
     log.info(f"Downloading {ticker} from {start} to {end or 'today'}")
     end = end or datetime.today().strftime("%Y-%m-%d")
-    df = yf.download(ticker, start=start, end=end, auto_adjust=True, progress=False)
+    df = yf.download(ticker, start=start, end=end, auto_adjust=True, progress=False, interval=interval)
 
     if df.empty:
         raise ValueError(f"No data returned for ticker '{ticker}'. Check your internet connection.")
@@ -171,7 +171,7 @@ def main():
     raw_path.parent.mkdir(parents=True, exist_ok=True)
 
     # 1. Fetch
-    df = fetch_ohlcv(dc["ticker"], dc["start_date"], dc["end_date"])
+    df = fetch_ohlcv(dc["ticker"], dc["start_date"], dc["end_date"], interval = dc.get("timeframe", "1d"))
     df.to_parquet(raw_path)
     log.info(f"Raw data saved → {raw_path}")
 
