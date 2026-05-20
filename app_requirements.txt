@@ -37,3 +37,4 @@ shap>=0.45.0
 dagshub
 fastapi
 uvicorn
+alpaca-py
