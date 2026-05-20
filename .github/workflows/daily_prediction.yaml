@@ -1,7 +1,5 @@
 name: Daily Signal Prediction
 on:
-  push:
-    branches: [ "main" ]
   schedule:
     # 00:00 UTC
     - cron: '32 0 * * *'
