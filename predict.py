@@ -32,7 +32,7 @@ import yaml
 from fetch.fetch_data import fetch_ohlcv, make_labels, preprocess
 from features.feature_engineering import engineer_features, get_feature_columns
 from utils.email_utils import send_email
-#from utils.trade_utils import run_trading_cycle
+from utils.trade_utils import manage_ic_markets_scheduled_trade
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
@@ -179,6 +179,15 @@ def main():
 
     message = get_signal_message(pred, proba, last_date)
     print_signal(pred, proba, last_date)
+    IC_MT5_PATH = "C:\\Program Files\\ICMarkets MetaTrader 5\\terminal64.exe"
+    
+    # Trigger management sequence 
+    manage_ic_markets_scheduled_trade(
+        symbol="EURUSD", 
+        direction="BUY", 
+        volume=0.01, 
+        terminal_path=IC_MT5_PATH
+    )
     #run_trading_cycle(TRADE_DIRECTIONS[pred])
     send_email(message)
 
