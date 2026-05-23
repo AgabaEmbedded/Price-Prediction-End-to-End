@@ -179,7 +179,7 @@ def main():
 
     message = get_signal_message(pred, proba, last_date)
     print_signal(pred, proba, last_date)
-    IC_MT5_PATH = "C:\\Program Files\\ICMarkets MetaTrader 5\\terminal64.exe"
+    IC_MT5_PATH = r"C:\Program Files\MetaTrader 5\terminal64.exe"
     
     # Trigger management sequence 
     manage_ic_markets_scheduled_trade(
