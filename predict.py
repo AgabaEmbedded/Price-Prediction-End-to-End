@@ -24,6 +24,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -97,10 +98,10 @@ def predict_from_registry(feature_cols: list[str], cfg: dict):
 
 
 def print_signal(pred: int, proba: np.ndarray | None, last_date):
-    print("\n" + "═"*55)
+    print("\n" + "="*55)
     print(f"  EUR/USD DAILY SIGNAL  —  {datetime.today().strftime('%A %d %b %Y')}")
     print(f"  Model: Registry Latest  |  Based on data up to: {last_date.date()}")
-    print("═"*55)
+    print("="*55)
     print(f"\n  📊  SIGNAL:  {SIGNAL_NAMES[pred]}")
     print(f"  📌  ACTION:  {SIGNAL_ACTIONS[pred]}\n")
 
@@ -116,13 +117,13 @@ def print_signal(pred: int, proba: np.ndarray | None, last_date):
     print("\n  ⚠️  DISCLAIMER: This is a research model")
     print("     NOT financial advice. Always use proper")
     print("     risk management before trading.")
-    print("═"*55 + "\n")
+    print("="*55 + "\n")
 
 
 def get_signal_message(pred: int, proba: np.ndarray | None, last_date) -> str:
     lines = []
     
-    border = "═" * 30
+    border = "=" * 30
     lines.append(border)
     lines.append(f"   EUR/USD DAILY SIGNAL  —  {datetime.today().strftime('%A %d %b %Y')}")
     lines.append(f"   Model: Registry Latest  |  Based on data up to: {last_date.date()}")
@@ -160,6 +161,8 @@ def main():
 
     # Load feature columns
     col_path = Path(cfg["features"]["featured_path"]) / "feature_columns.json"
+    size = cfg["trade"]["size"]
+    IC_MT5_PATH = cfg["trade"]["IC_MT5_PATH"]
     with open(col_path) as f:
         feature_cols = json.load(f)
 
@@ -180,18 +183,28 @@ def main():
     message = get_signal_message(pred, proba, last_date)
     print_signal(pred, proba, last_date)
     IC_MT5_PATH = r"C:\Program Files\MetaTrader 5\terminal64.exe"
-    
-    # Trigger management sequence 
-    manage_ic_markets_scheduled_trade(
-        symbol="EURUSD", 
-        direction="BUY", 
-        volume=0.01, 
-        terminal_path=IC_MT5_PATH
-    )
-    #run_trading_cycle(TRADE_DIRECTIONS[pred])
     send_email(message)
+    # Trigger management sequence 
+    try:
+        manage_ic_markets_scheduled_trade(
+            symbol="EURUSD", 
+            direction=TRADE_DIRECTIONS[pred], 
+            volume=size, 
+            terminal_path=IC_MT5_PATH
+        )
+    except Exception as e:
+        log.error(f"Error during trade management: {e}")
+        log.info("Continuing without trade execution.")
+    
 
 
 if __name__ == "__main__":
-    main()
-
+    now = datetime.now()
+    # If it is Friday after 4:50 PM, skip the prediction pass and let the Retrain Task take over
+    #if now.weekday() == 4 and now.hour >= 16 and now.minute >= 50:
+    if now.weekday() > 4 and now.hour >= 16 and now.minute >= 50:
+        print("Friday Market Closing Sequence initiated. Skipping prediction pass for DVC Retraining.")
+        sys.exit(99) # <--- Use a custom exit code to signal the batch file
+    else:
+        main()
+        sys.exit(0)

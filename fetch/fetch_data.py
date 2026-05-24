@@ -14,6 +14,13 @@ Labels:
 Run:
     python data/fetch_data.py
 """
+from alpaca.data.historical import CryptoHistoricalDataClient, StockHistoricalDataClient
+from alpaca.data.requests import CryptoBarsRequest
+from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
+from datetime import datetime, timedelta
+import pandas as pd
+
+
 
 import sys
 import os
@@ -42,17 +49,58 @@ def load_config(path: str = "configs/config.yaml") -> dict:
         return yaml.safe_load(f)
 
 
+
+def fetch_ohlcv_via_alpaca(ticker: str, start_str: str, end_str: str):
+
+    # 1. Initialize client (Use Crypto or Stock client depending on asset)
+    # Leave API keys blank for basic free public crypto data tier
+    client = CryptoHistoricalDataClient() 
+
+    # 2. Define a custom 4-Hour Timeframe object
+    four_hour_tf = TimeFrame(4, TimeFrameUnit.Hour)
+
+    # 3. Structure the request parameters
+    request_params = CryptoBarsRequest(
+        symbol_or_symbols=["ETH/USD"],
+        timeframe=four_hour_tf,
+        start=datetime.strptime(start_str, "%Y-%m-%d"),
+        end=datetime.strptime(end_str, "%Y-%m-%d")  # Include end date fully
+    )
+
+    # 4. Pull bars and extract directly to a Pandas DataFrame
+    print("Fetching 4H data from Alpaca endpoints...")
+    bars = client.get_crypto_bars(request_params)
+    df = bars.df
+    
+    df.rename(columns={
+        "open": "Open",
+        "high": "High",
+        "low": "Low",
+        "close": "Close",
+        "volume": "Volume"
+    }, inplace=True)
+    df["Date"] = df.index.map(lambda x: x[1])
+    df.set_index("Date", inplace=True)
+    df.index = pd.to_datetime(df.index)
+    print(df.columns)
+
+    return df
+
+
 # ── Fetch ─────────────────────────────────────────────────────────────────────
 
 def fetch_ohlcv(ticker: str, start: str, end: str | None, interval: str = "1d") -> pd.DataFrame:
     """Download daily OHLCV from yfinance."""
     log.info(f"Downloading {ticker} from {start} to {end or 'today'}")
     end = end or datetime.today().strftime("%Y-%m-%d")
-    df = yf.download(ticker, start=start, end=end, auto_adjust=True, progress=False, interval=interval)
+    if interval == "4h":
+        df = fetch_ohlcv_via_alpaca(ticker, start, end)
+    else:
+        df = yf.download(ticker, start=start, end=end, auto_adjust=True, progress=False, interval=interval)
 
     if df.empty:
         raise ValueError(f"No data returned for ticker '{ticker}'. Check your internet connection.")
-
+    print(df.head())
     # yfinance returns MultiIndex columns when downloading single ticker in newer versions
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.droplevel(1)
@@ -64,45 +112,6 @@ def fetch_ohlcv(ticker: str, start: str, end: str | None, interval: str = "1d") 
 
     log.info(f"Fetched {len(df)} rows  |  {df.index[0].date()} → {df.index[-1].date()}")
     return df
-def fetch_ohlcv_via_alpaca(ticker: str, start_str: str, end_str: str):
-    import os
-    from datetime import datetime
-    from alpaca.data.client import CryptoHistoricalDataClient
-    from alpaca.data.requests import CryptoBarsRequest
-    from alpaca.data.timeframe import TimeFrame
-
-    # 1. Initialize Alpaca historical data client
-    API_KEY = os.getenv("ALPACA_API_KEY")
-    SECRET_KEY = os.getenv("ALPACA_SECRET_KEY")
-
-    client = CryptoHistoricalDataClient(api_key=API_KEY, secret_key=SECRET_KEY)
-    # Standardize format for Alpaca (e.g., ETH/USD)
-    alpaca_ticker = ticker.replace("-", "/")
-    
-    # Parse standard YYYY-MM-DD script parameters to datetime objects
-    start_dt = datetime.strptime(start_str, "%Y-%m-%d")
-    end_dt = datetime.strptime(end_str, "%Y-%m-%d")
-    
-    print(f"Fetching {alpaca_ticker} historical bars from Alpaca...")
-    
-    # 2. Configure request directly for 4-Hour blocks
-    request_params = CryptoBarsRequest(
-        symbol_or_symbols=alpaca_ticker,
-        timeframe=TimeFrame.Hour * 4,  # Native 4h support!
-        start=start_dt,
-        end=end_dt
-    )
-    
-    # 3. Retrieve and structure data
-    bars = client.get_crypto_bars(request_params)
-    df = bars.df
-    
-    # Clean up multi-indexing returned by Alpaca
-    if not df.empty:
-        df = df.xs(alpaca_ticker, level=0)
-        
-    return df
-
 
 # ── Label creation ────────────────────────────────────────────────────────────
 

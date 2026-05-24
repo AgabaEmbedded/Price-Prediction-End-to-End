@@ -37,4 +37,5 @@ dvc>=2.0.0                      # Data version control (optional but recommended
 dagshub
 fastapi
 uvicorn
-MetaTrader5
+Metatrader5
+alpaca-py

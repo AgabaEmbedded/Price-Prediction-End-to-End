@@ -6,9 +6,9 @@
 
 # ── Data ──────────────────────────────────────
 data:
-  ticker: "EURUSD=X" #"GC=F"  #"XAUUSD=X"            yfinance ticker for EUR/USD
-  timeframe: "1d"              # Data granularity (e.g., 1d, 1h)
-  start_date: "2010-01-01"     # Historical data start
+  ticker: "EURUSD=X"           # yfinance ticker for EUR/USD
+  timeframe: "4h"              # Data granularity (e.g., 1d, 1h)
+  start_date: "2010-04-01"     # Historical data start
   end_date: null               # null = today
   raw_path: "data/fetch/raw_eurusd.parquet"
   processed_path: "data/fetch/processed_eurusd.parquet"
@@ -98,3 +98,7 @@ training:
 output:
   model_dir: "saved_models/"
   plots_dir: "plots/"
+
+trade:
+  size: 0.01
+  IC_MT5_PATH: "C:/Program Files/MetaTrader 5/terminal64.exe"

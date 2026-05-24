@@ -38,4 +38,4 @@ dagshub
 #fastapi
 #uvicorn
 #alpaca-py
-MetaTrader5
+Metatrader5
