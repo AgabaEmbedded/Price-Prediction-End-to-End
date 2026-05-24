@@ -37,5 +37,5 @@ dvc>=2.0.0                      # Data version control (optional but recommended
 dagshub
 fastapi
 uvicorn
-metatrader5==5.0.5735
+#metatrader5==5.0.5735
 alpaca-py
