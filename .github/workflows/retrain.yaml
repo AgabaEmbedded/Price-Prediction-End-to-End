@@ -1,8 +1,8 @@
 name: Retrain Model
 on:
   schedule:
-    # 22:00 UTC is 10 PM. Note: GitHub Actions uses UTC.
-    - cron: '11 22 * * 0'
+    # 00:00 UTC
+    - cron: '0 0 0 0 0' #* * * * *'
   workflow_dispatch: # Allows manual triggering
 
 jobs:

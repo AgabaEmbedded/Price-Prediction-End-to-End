@@ -7,7 +7,7 @@
 # ── Data ──────────────────────────────────────
 data:
   ticker: "EURUSD=X"           # yfinance ticker for EUR/USD
-  timeframe: "1d           # Data granularity (e.g., 1d, 1h)
+  timeframe: "1d"           # Data granularity (e.g., 1d, 1h)
   start_date: "2010-04-01"     # Historical data start
   end_date: null               # null = today
   raw_path: "data/fetch/raw_eurusd.parquet"
