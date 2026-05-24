@@ -94,6 +94,7 @@ def fetch_ohlcv(ticker: str, start: str, end: str | None, interval: str = "1d") 
     log.info(f"Downloading {ticker} from {start} to {end or 'today'}")
     end = end or datetime.today().strftime("%Y-%m-%d")
     if interval == "4h":
+        
         df = fetch_ohlcv_via_alpaca(ticker, start, end)
     else:
         df = yf.download(ticker, start=start, end=end, auto_adjust=True, progress=False, interval=interval)
