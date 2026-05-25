@@ -1,26 +1,24 @@
 """
 data/fetch_data.py
 ──────────────────
-Fetches EUR/USD OHLCV data from yfinance, preprocesses it,
-and creates the 5-class directional labels.
+Fetches OHLCV data from yfinance for any supported timeframe,
+preprocesses it, and creates the 5-class directional labels.
+
+yfinance hourly data limits (free, no API key needed):
+  - 1h  : up to 730 days history
+  - 1d  : unlimited history (2000+)
+  - 4h  : not natively supported by yfinance — use "1h" and resample
 
 Labels:
-  0 → Strong Sell  (return < -strong_threshold)
-  1 → Sell         (return < -weak_threshold)
-  2 → Hold         (|return| <= weak_threshold)
-  3 → Buy          (return >  weak_threshold)
-  4 → Strong Buy   (return >  strong_threshold)
+  0 → Strong Sell  (next return < -strong_threshold)
+  1 → Sell         (next return < -weak_threshold)
+  2 → Hold         (|next return| <= weak_threshold)
+  3 → Buy          (next return >  weak_threshold)
+  4 → Strong Buy   (next return >  strong_threshold)
 
 Run:
     python data/fetch_data.py
 """
-from alpaca.data.historical import CryptoHistoricalDataClient, StockHistoricalDataClient
-from alpaca.data.requests import CryptoBarsRequest
-from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
-from datetime import datetime, timedelta
-import pandas as pd
-
-
 
 import sys
 import os
@@ -28,7 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import logging
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -49,60 +47,103 @@ def load_config(path: str = "configs/config.yaml") -> dict:
         return yaml.safe_load(f)
 
 
+# ── Timeframe helpers ─────────────────────────────────────────────────────────
 
-def fetch_ohlcv_via_alpaca(ticker: str, start_str: str, end_str: str):
+# yfinance interval strings and their max history in days
+_YF_INTERVALS = {
+    "1m":  7,
+    "2m":  60,
+    "5m":  60,
+    "15m": 60,
+    "30m": 60,
+    "60m": 730,   # alias for 1h
+    "1h":  730,
+    "90m": 60,
+    "1d":  None,  # unlimited
+    "5d":  None,
+    "1wk": None,
+    "1mo": None,
+}
 
-    # 1. Initialize client (Use Crypto or Stock client depending on asset)
-    # Leave API keys blank for basic free public crypto data tier
-    client = CryptoHistoricalDataClient() 
+def _resolve_interval(timeframe: str) -> str:
+    """Map config timeframe string to yfinance interval string."""
+    mapping = {
+        "1h":  "1h",
+        "4h":  "1h",   # fetch 1h then resample to 4h
+        "1d":  "1d",
+        "15m": "15m",
+        "5m":  "5m",
+        "1m":  "1m",
+    }
+    return mapping.get(timeframe.lower(), timeframe.lower())
 
-    # 2. Define a custom 4-Hour Timeframe object
-    four_hour_tf = TimeFrame(4, TimeFrameUnit.Hour)
+def _max_history_days(yf_interval: str) -> int | None:
+    """Return the maximum lookback in days for a given yfinance interval."""
+    return _YF_INTERVALS.get(yf_interval)
 
-    # 3. Structure the request parameters
-    request_params = CryptoBarsRequest(
-        symbol_or_symbols=["ETH/USD"],
-        timeframe=four_hour_tf,
-        start=datetime.strptime(start_str, "%Y-%m-%d"),
-        end=datetime.strptime(end_str, "%Y-%m-%d")  # Include end date fully
-    )
+def _clamp_start(start_str: str | None, yf_interval: str) -> str:
+    """
+    yfinance enforces hard history limits for intraday intervals.
+    Clamp the requested start date to stay within the allowed window,
+    with a small buffer to avoid edge-case API rejections.
+    """
+    max_days = _max_history_days(yf_interval)
+    today    = datetime.today()
 
-    # 4. Pull bars and extract directly to a Pandas DataFrame
-    print("Fetching 4H data from Alpaca endpoints...")
-    bars = client.get_crypto_bars(request_params)
-    df = bars.df
-    
-    df.rename(columns={
-        "open": "Open",
-        "high": "High",
-        "low": "Low",
-        "close": "Close",
-        "volume": "Volume"
-    }, inplace=True)
-    df["Date"] = df.index.map(lambda x: x[1])
-    df.set_index("Date", inplace=True)
-    df.index = pd.to_datetime(df.index)
-    print(df.columns)
+    if max_days is not None:
+        earliest_allowed = today - timedelta(days=max_days - 2)
+        if start_str is None:
+            return earliest_allowed.strftime("%Y-%m-%d")
+        requested = datetime.strptime(start_str, "%Y-%m-%d")
+        if requested < earliest_allowed:
+            clamped = earliest_allowed.strftime("%Y-%m-%d")
+            log.warning(
+                f"Requested start {start_str} is beyond yfinance's {max_days}-day "
+                f"limit for '{yf_interval}' interval. Clamping to {clamped}."
+            )
+            return clamped
+        return start_str
 
-    return df
+    return start_str or "2010-01-01"
 
 
 # ── Fetch ─────────────────────────────────────────────────────────────────────
 
-def fetch_ohlcv(ticker: str, start: str, end: str | None, interval: str = "1d") -> pd.DataFrame:
-    """Download daily OHLCV from yfinance."""
-    log.info(f"Downloading {ticker} from {start} to {end or 'today'}")
-    end = end or datetime.today().strftime("%Y-%m-%d")
-    if interval == "4h":
-        
-        df = fetch_ohlcv_via_alpaca(ticker, start, end)
-    else:
-        df = yf.download(ticker, start=start, end=end, auto_adjust=True, progress=False, interval=interval)
+def fetch_ohlcv(
+    ticker: str,
+    start: str | None,
+    end: str | None,
+    interval: str = "1d",
+) -> pd.DataFrame:
+    """
+    Download OHLCV data from yfinance.
+
+    For 4h: fetches 1h bars and resamples to 4h (yfinance has no native 4h).
+    For intraday intervals: start date is automatically clamped to the
+    maximum allowed history window.
+    """
+    yf_interval = _resolve_interval(interval)
+    start       = _clamp_start(start, yf_interval)
+    end         = end or datetime.today().strftime("%Y-%m-%d")
+
+    log.info(f"Downloading {ticker}  interval={interval}  {start} → {end}")
+
+    df = yf.download(
+        ticker,
+        start=start,
+        end=end,
+        interval=yf_interval,
+        auto_adjust=True,
+        progress=False,
+    )
 
     if df.empty:
-        raise ValueError(f"No data returned for ticker '{ticker}'. Check your internet connection.")
-    print(df.head())
-    # yfinance returns MultiIndex columns when downloading single ticker in newer versions
+        raise ValueError(
+            f"No data returned for '{ticker}' with interval='{yf_interval}'. "
+            "Check the ticker symbol and your internet connection."
+        )
+
+    # Flatten MultiIndex columns (yfinance >= 0.2.x quirk)
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.droplevel(1)
 
@@ -111,70 +152,84 @@ def fetch_ohlcv(ticker: str, start: str, end: str | None, interval: str = "1d") 
     df.index.name = "date"
     df = df.sort_index()
 
-    log.info(f"Fetched {len(df)} rows  |  {df.index[0].date()} → {df.index[-1].date()}")
+    # Remove any rows with zero/negative close (bad data)
+    bad = (df["close"] <= 0) | df["close"].isna()
+    if bad.any():
+        log.warning(f"Dropping {bad.sum()} rows with invalid close prices.")
+        df = df[~bad]
+
+    # Resample 1h → 4h if requested
+    if interval.lower() == "4h":
+        log.info("Resampling 1h bars to 4h...")
+        df = (
+            df.resample("4h")
+            .agg({
+                "open":   "first",
+                "high":   "max",
+                "low":    "min",
+                "close":  "last",
+                "volume": "sum",
+            })
+            .dropna()
+        )
+
+    log.info(
+        f"Fetched {len(df)} bars  |  "
+        f"{df.index[0]}  →  {df.index[-1]}"
+    )
     return df
+
 
 # ── Label creation ────────────────────────────────────────────────────────────
 
 def make_labels(
     df: pd.DataFrame,
     strong_threshold: float = 0.005,
-    weak_threshold: float = 0.001,
+    weak_threshold: float   = 0.001,
 ) -> pd.DataFrame:
     """
-    Compute next-day log return and map to 5-class label.
+    Compute next-bar log return and map to 5-class label.
 
-    We predict the NEXT day's direction, so labels are shifted by -1
-    (today's features → tomorrow's outcome).
+    We predict the NEXT bar's direction, so labels are shifted by -1
+    (current bar's features → next bar's outcome).
     """
-    # Log return of next trading day close vs today's close
-    df["log_return"] = np.log(df["close"] / df["close"].shift(1))
-    df["next_log_return"] = df["log_return"].shift(-1)   # target
+    df = df.copy()
+    df["log_return"]      = np.log(df["close"] / df["close"].shift(1))
+    df["next_log_return"] = df["log_return"].shift(-1)
 
     def _classify(r: float) -> int:
-        if r > strong_threshold:
-            return 4   # Strong Buy
-        elif r > weak_threshold:
-            return 3   # Buy
-        elif r < -strong_threshold:
-            return 0   # Strong Sell
-        elif r < -weak_threshold:
-            return 1   # Sell
-        else:
-            return 2   # Hold
+        if   r >  strong_threshold: return 4   # Strong Buy
+        elif r >  weak_threshold:   return 3   # Buy
+        elif r < -strong_threshold: return 0   # Strong Sell
+        elif r < -weak_threshold:   return 1   # Sell
+        else:                       return 2   # Hold
 
     df["label"] = df["next_log_return"].apply(_classify)
 
-    # Distribution summary
-    dist = df["label"].value_counts().sort_index()
     names = {0: "StrongSell", 1: "Sell", 2: "Hold", 3: "Buy", 4: "StrongBuy"}
+    dist  = df["label"].value_counts().sort_index()
     log.info("Label distribution:")
-    for k, v in dist.items():
-        log.info(f"  {names[k]:>10}  ({k}): {v:5d}  ({100*v/len(df):.1f}%)")
+    for k, cnt in dist.items():
+        log.info(f"  {names[k]:>10} ({k}): {cnt:5d}  ({100*cnt/len(df):.1f}%)")
 
     return df
 
 
-# ── Basic preprocessing ───────────────────────────────────────────────────────
+# ── Preprocessing ─────────────────────────────────────────────────────────────
 
 def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     """
     Clean the raw OHLCV + label dataframe.
-    - Drop weekends / non-trading rows (already handled by yfinance)
-    - Forward-fill any remaining gaps (holidays etc.)
-    - Drop the last row (no next-day label available)
-    - Sanity checks
+    - Forward-fill any remaining gaps.
+    - Drop the last bar (no next_log_return available).
+    - Sanity checks.
     """
-    # Forward fill (handles holidays where market was closed mid-week)
     df = df.ffill()
-
-    # Drop the last row — its label (next_log_return) is NaN
     df = df.dropna(subset=["next_log_return", "label"])
 
-    # Sanity checks
-    assert (df["high"] >= df["low"]).all(), "High < Low found in data!"
-    assert (df["close"] > 0).all(), "Non-positive close prices found!"
-    assert df["label"].between(0, 4).all(), "Labels outside [0,4] range!"
+    assert (df["high"] >= df["low"]).all(),  "High < Low found in data!"
+    assert (df["close"] > 0).all(),          "Non-positive close prices found!"
+    assert df["label"].between(0, 4).all(),  "Labels outside [0, 4]!"
 
     log.info(f"After preprocessing: {len(df)} rows remain")
     return df
@@ -185,24 +240,21 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
 def chronological_split(
     df: pd.DataFrame,
     train_ratio: float = 0.70,
-    val_ratio: float = 0.15,
+    val_ratio:   float = 0.15,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """
-    Strict chronological split — NO shuffle.
-    This is critical for time series to avoid data leakage.
-    """
-    n = len(df)
+    """Strict chronological split — NO shuffle."""
+    n         = len(df)
     train_end = int(n * train_ratio)
-    val_end = int(n * (train_ratio + val_ratio))
+    val_end   = int(n * (train_ratio + val_ratio))
 
     train = df.iloc[:train_end].copy()
     val   = df.iloc[train_end:val_end].copy()
     test  = df.iloc[val_end:].copy()
 
     log.info(
-        f"Split → Train: {len(train)} ({train.index[0].date()}→{train.index[-1].date()})  "
-        f"Val: {len(val)} ({val.index[0].date()}→{val.index[-1].date()})  "
-        f"Test: {len(test)} ({test.index[0].date()}→{test.index[-1].date()})"
+        f"Split →  Train: {len(train):,}  ({train.index[0]} → {train.index[-1]})\n"
+        f"          Val:  {len(val):,}   ({val.index[0]} → {val.index[-1]})\n"
+        f"          Test: {len(test):,}  ({test.index[0]} → {test.index[-1]})"
     )
     return train, val, test
 
@@ -211,15 +263,19 @@ def chronological_split(
 
 def main():
     cfg = load_config()
-    dc = cfg["data"]
+    dc  = cfg["data"]
 
-    # Paths
-    raw_path = Path(dc["raw_path"])
+    raw_path  = Path(dc["raw_path"])
     proc_path = Path(dc["processed_path"])
     raw_path.parent.mkdir(parents=True, exist_ok=True)
 
     # 1. Fetch
-    df = fetch_ohlcv(dc["ticker"], dc["start_date"], dc["end_date"], interval = dc.get("timeframe", "1d"))
+    df = fetch_ohlcv(
+        ticker   = dc["ticker"],
+        start    = dc.get("start_date"),
+        end      = dc.get("end_date"),
+        interval = dc.get("timeframe", "1d"),
+    )
     df.to_parquet(raw_path)
     log.info(f"Raw data saved → {raw_path}")
 
@@ -229,18 +285,25 @@ def main():
     # 3. Preprocess
     df = preprocess(df)
 
-    # 4. Save processed (with labels, without features — features added later)
+    # 4. Save processed
     df.to_parquet(proc_path)
     log.info(f"Processed data saved → {proc_path}")
 
-    # 5. Quick split preview
+    # 5. Split preview
     train, val, test = chronological_split(df, dc["train_ratio"], dc["val_ratio"])
 
-    # 6. Print a quick summary
+    # 6. Summary
     print("\n" + "="*60)
     print("  DATA SUMMARY")
     print("="*60)
-    print(df[["open", "high", "low", "close", "volume", "log_return", "label"]].describe().round(4))
+    print(f"  Ticker    : {dc['ticker']}")
+    print(f"  Timeframe : {dc.get('timeframe', '1d')}")
+    print(f"  Total bars: {len(df):,}")
+    print(f"  Train     : {len(train):,}")
+    print(f"  Val       : {len(val):,}")
+    print(f"  Test      : {len(test):,}")
+    print()
+    print(df[["open", "high", "low", "close", "log_return", "label"]].describe().round(6))
     print("="*60)
     print("Done! Next step → python features/feature_engineering.py")
 
