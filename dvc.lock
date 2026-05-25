@@ -5,49 +5,49 @@ stages:
     deps:
     - path: configs/config.yaml
       hash: md5
-      md5: ff7d0bb6e7aefbfdae4f249cb4e39047
-      size: 4503
+      md5: 93237fe4e383e97424d7836224efcd95
+      size: 4040
     - path: fetch/fetch_data.py
       hash: md5
-      md5: 722882361d1b1a19c9c578921be69a93
-      size: 10473
+      md5: f440eadb6b31bce65edb31689c444ecf
+      size: 8789
     outs:
     - path: data/fetch/processed_eurusd.parquet
       hash: md5
-      md5: 26896dd29aeffdc6192014c319ec0643
-      size: 397130
+      md5: 6daf07ad03108e1b212de66e689d74b4
+      size: 236428
     - path: data/fetch/raw_eurusd.parquet
       hash: md5
-      md5: f255081f46783a6806cd492f6cf0b1a4
-      size: 213076
+      md5: d95092541de152c835109f85c5bbdd0a
+      size: 151227
   feature_engineering:
     cmd: python features/feature_engineering.py
     deps:
     - path: configs/config.yaml
       hash: md5
-      md5: ff7d0bb6e7aefbfdae4f249cb4e39047
-      size: 4503
+      md5: 93237fe4e383e97424d7836224efcd95
+      size: 4040
     - path: data/fetch/processed_eurusd.parquet
       hash: md5
-      md5: 26896dd29aeffdc6192014c319ec0643
-      size: 397130
+      md5: 6daf07ad03108e1b212de66e689d74b4
+      size: 236428
     - path: features/feature_engineering.py
       hash: md5
-      md5: 29d66f28bbc1242be336b6d7fc686008
-      size: 26792
+      md5: f97a1072f0e5b1b9bbb0be5c3be644e3
+      size: 18501
     outs:
     - path: data/features/feature_columns.json
       hash: md5
-      md5: 6e19686b8a3d8fddc788ab8ea8edae92
-      size: 2521
+      md5: ee6a7bba875e6b48fe7fa3d3b82e63b4
+      size: 2177
     - path: data/features/featured_eurusd.parquet
       hash: md5
-      md5: 37e53e441387d0adef79a86783d055e9
-      size: 9330842
+      md5: 19c7d470bfb1d7f9e1ed848e8617ee80
+      size: 3596769
     - path: data/features/sequences.npz
       hash: md5
-      md5: 117cfee56ea13b648351eef91ec002c1
-      size: 6188536
+      md5: bb9136f01e8542301b1adbf76dc332bd
+      size: 1839555
   model_search:
     cmd: python training/search_models.py
     deps:
@@ -105,16 +105,16 @@ stages:
       size: 205
     - path: configs/config.yaml
       hash: md5
-      md5: ff7d0bb6e7aefbfdae4f249cb4e39047
-      size: 4503
+      md5: 93237fe4e383e97424d7836224efcd95
+      size: 4040
     - path: data/features/feature_columns.json
       hash: md5
-      md5: 6e19686b8a3d8fddc788ab8ea8edae92
-      size: 2521
+      md5: ee6a7bba875e6b48fe7fa3d3b82e63b4
+      size: 2177
     - path: data/features/featured_eurusd.parquet
       hash: md5
-      md5: 37e53e441387d0adef79a86783d055e9
-      size: 9330842
+      md5: 19c7d470bfb1d7f9e1ed848e8617ee80
+      size: 3596769
     - path: training/train_final.py
       hash: md5
       md5: 8d6589a1abdfe4fde4021c25676ee43b
@@ -122,8 +122,8 @@ stages:
     outs:
     - path: saved_models
       hash: md5
-      md5: 1def7b0a4eed5580aa7b203ce3a34fea.dir
-      size: 1106868
+      md5: bf16086ee4f5c758f1db51adfd1e20dd.dir
+      size: 1044452
       nfiles: 2
   prediction:
     cmd: python predict.py

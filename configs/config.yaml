@@ -1,97 +1,84 @@
 # configs/config.yaml
 # ─────────────────────────────────────────────
 # Central configuration for the EUR/USD predictor project.
+# Edit this file before running any pipeline step.
 # ─────────────────────────────────────────────
 
 # ── Data ──────────────────────────────────────
 data:
-  ticker: "EURUSD=X"
-  timeframe: "1h"
-
-  # yfinance limits 1h data to the last 730 days — start_date will be
-  # automatically clamped to that window by fetch_data.py.
-  # Set to null to always fetch the maximum available history.
-  start_date: null
-  end_date: null
-
+  ticker: "EURUSD=X"           # yfinance ticker for EUR/USD
+  timeframe: "1d"           # Data granularity (e.g., 1d, 1h)
+  start_date: "2010-01-01"     # Historical data start
+  end_date: null               # null = today
   raw_path: "data/fetch/raw_eurusd.parquet"
   processed_path: "data/fetch/processed_eurusd.parquet"
 
-  # ── Label thresholds ──────────────────────────────────────────────────────
-  # These are per-BAR log-return thresholds (not daily).
-  # For 1h EUR/USD:
-  #   Typical hourly move: ~0.02–0.05%
-  #   Use the 25th/75th percentile of |returns| as weak/strong thresholds.
-  #   Run fetch_data.py and check the describe() output, then tune these.
-  #
-  # Suggested starting point for 1h EUR/USD:
-  strong_threshold: 0.00082   # ~0.08% per hour  → Strong Buy/Sell
-  weak_threshold:   0.00022   # ~0.02% per hour  → Buy/Sell
-  #
-  # If you still get >60% Hold labels, lower both values.
-  # If you get <10% Hold, raise both values.
+  # Label thresholds (fraction of daily return)
+  # Returns > strong_threshold  → Strong Buy  (4)
+  # Returns > weak_threshold    → Buy         (3)
+  # |Return| <= weak_threshold  → Hold        (2)
+  # Returns < -weak_threshold   → Sell        (1)
+  # Returns < -strong_threshold → Strong Sell (0)
+  strong_threshold: 0.005   # 0.5%
+  weak_threshold: 0.001   # 0.1%
 
+  # Train/Val/Test split (chronological — no shuffle)
   train_ratio: 0.70
   val_ratio:   0.15
+  # test_ratio is implicit: 1 - train - val = 0.15
 
 # ── Features ──────────────────────────────────
 features:
-  # All window sizes below are expressed in TRADING DAYS.
-  # feature_engineering.py multiplies them by bars_per_day for the
-  # actual timeframe, so these values mean the same thing at 1h or 1d.
-  #
-  # Example: sma_window=20 on 1h → 20 * 6 = 120 bars (≈ 20 trading days)
-  #          sma_window=20 on 1d → 20 * 1 = 20 bars  (≈ 20 trading days)
-
-  sma_windows:    [5, 10, 20, 50, 100, 200]  # in trading days
-  ema_windows:    [5, 12, 26, 50]             # in trading days
-  rsi_period:     14    # in trading days
-  atr_period:     14    # in trading days
-  bb_period:      20    # in trading days
-  bb_std:         2
-  macd_fast:      12    # in trading days
-  macd_slow:      26    # in trading days
-  macd_signal:    9     # in trading days
-  stoch_period:   14    # in trading days
-  cci_period:     20    # in trading days
-  williams_period: 14   # in trading days
-
-  # Lag features in trading-day equivalents
-  # [1d, 2d, 3d, 1w, 2w, 1mo] → scaled to bar count by feature_engineering.py
-  lag_periods:    [1, 2, 3, 5, 10, 21]
-
-  # Rolling stat windows in trading-day equivalents
-  rolling_windows: [5, 10, 21]
-
-  # Sequence length for LSTM/Transformer — in bars (not days).
-  # 48 bars = 48 hours = ~8 trading days of hourly context.
-  # Increase to 72 or 96 if GPU memory allows.
-  sequence_length: 48
-
-  featured_path: "data/features"
+  # Rolling window sizes for technical indicators
+  sma_windows: [5, 10, 20, 50, 100, 200]
+  ema_windows: [5, 12, 26, 50]
+  rsi_period: 14
+  atr_period: 14
+  bb_period: 20
+  bb_std: 2
+  macd_fast: 12
+  macd_slow: 26
+  macd_signal: 9
+  stoch_period: 14
+  cci_period: 20
+  williams_period: 14
+  # Lag features (look-back steps)
+  lag_periods: [1, 2, 3, 5, 10, 21]
+  # Rolling statistics windows
+  rolling_windows: [15, 30, 63]
+  # Sequence length for LSTM/Transformer
+  sequence_length: 30
+  featured_path : "data/features"
 
 # ── MLflow / S3 ───────────────────────────────
 mlflow:
-  location: dagshub   # local | dagshub | aws
+  location: dagshub #local, dagshub, aws
   repo_owner: "AgabaEmbedded"
   repo_name: "Price-Prediction-End-to-End"
+  # Your S3 bucket for MLflow artifact storage
+  # Format: s3://your-bucket-name/mlflow
   s3_artifact_uri: ""
-  tracking_uri: "https://dagshub.com/AgabaEmbedded/Price-Prediction-End-to-End.mlflow"
-  local_db_path: "mlflow.db"
+
+  # If you run an MLflow tracking server on EC2, put its URL here.
+  # For local tracking backed by S3, leave as "local" — artifacts
+  # still go to S3 but the sqlite DB lives locally.
+  tracking_uri: "https://dagshub.com/AgabaEmbedded/Price-Prediction-End-to-End.mlflow"           # or "http://your-ec2:5000"
+  local_db_path: "mlflow.db"      # used when tracking_uri == "local"
+
   experiment_name: "Price_prediction"
 
 # ── Model Search ──────────────────────────────
 model_search:
-  cv_folds: 5
-  scoring: "f1_macro"
-  n_jobs: -1
-  include_deep_learning: true
+  cv_folds: 5           # TimeSeriesSplit folds
+  scoring: "f1_macro"   # Primary metric for model selection
+  n_jobs: -1            # Parallelism (-1 = all cores)
+  include_deep_learning: true   # Set false to skip PyTorch models
 
 # ── Hyperparameter Tuning ─────────────────────
 hpo:
   framework: "optuna"
   n_trials: 50
-  timeout: 3600
+  timeout: 3600         # seconds (1 hour)
   cv_folds: 5
   scoring: "f1_macro"
   direction: "maximize"
@@ -99,12 +86,13 @@ hpo:
 # ── Training ──────────────────────────────────
 training:
   random_seed: 42
+  # Deep learning specific
   dl:
     batch_size: 64
     max_epochs: 100
     learning_rate: 0.001
-    patience: 10
-    device: "auto"
+    patience: 10          # Early stopping patience
+    device: "auto"        # "auto" detects cuda/mps/cpu
 
 # ── Output ────────────────────────────────────
 output:
