@@ -214,13 +214,26 @@ def main():
         log.info("Continuing without trade execution.")
 
 
-if __name__ == "__main__":
-    now = datetime.now()
-    # If it is Friday after 4:50 PM, skip the prediction pass and let the Retrain Task take over
-    #if now.weekday() == 4 and now.hour >= 16 and now.minute >= 50:
-    if now.weekday() == 4:
-        print("Friday Market Closing Sequence initiated. Skipping prediction pass for DVC Retraining.")
-        sys.exit(99) # <--- Use a custom exit code to signal the batch file
+
+if __name__ == "__main__": 
+
+    now = datetime.now()   
+    
+    MAINTENANCE_MODE = True 
+    
+    if MAINTENANCE_MODE:
+        print("[ALERT] Triggering maintenance mode. Server will remain awake for debugging.")
+        sys.exit(100)
+
+    elif now.weekday() == 4:
+        print("[INFO] Friday execution complete. Signaling batch script to run DVC Retraining.")
+        sys.exit(99)
     else:
-        main()
-        sys.exit(0)
+
+        try:
+            main()
+            sys.exit(0)
+        except Exception as e:
+            print(f"[CRITICAL ERROR] Main execution crashed: {e}")
+            print("Safeguarding server: switching to maintenance mode to prevent data loss.")
+            sys.exit(100)
