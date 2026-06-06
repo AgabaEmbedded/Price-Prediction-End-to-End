@@ -152,17 +152,12 @@ def get_signal_message(pred: int, proba: np.ndarray | None, last_date) -> str:
 
 def is_nfp_friday(date_obj):
     # NFP is always the first Friday of the month
-    if date_obj.weekday() == 4 and date_obj.day <= 7:
+    if date_obj.weekday() == 3 and date_obj.day <= 7:
         return True
     return False
 
 def main():
-    now = datetime.now()
-    if is_nfp_friday(now):
-        nlp_message = f"Today is {now.strftime('%A %d %b %Y')}, which is NFP Friday. The Non-Farm Payroll report is released today, often causing high volatility in the markets. To protect capital, we are skipping the trade generation for today. Please review the NFP report and adjust your trading strategy accordingly."
-        send_email(nlp_message)
-        print("Today is NFP Friday! Skipping trade generation to protect capital.")
-        return
+    
     parser = argparse.ArgumentParser()
     #parser.add_argument("--model",         required=False, help="Model name (e.g. LightGBM)")
     parser.add_argument("--model-path",    default=None,  help="Local model file path")
@@ -194,8 +189,17 @@ def main():
         pred, proba, last_date = predict_sklearn(str(default_path), feature_cols, cfg)
 
     message = get_signal_message(pred, proba, last_date)
+
+
+    now = datetime.now()
+    if is_nfp_friday(now):
+        message = f"Today is {now.strftime('%A %d %b %Y')}, which is NFP Friday. The Non-Farm Payroll report is released today, often causing high volatility in the markets. To protect capital, we are skipping the trade generation for today. Please review the NFP report and adjust your trading strategy accordingly.\n\n{message}"          
+        pred = 2
+
+
     print_signal(pred, proba, last_date)
     IC_MT5_PATH = r"C:\Program Files\MetaTrader 5\terminal64.exe"
+  
     send_email(message)
     # Trigger management sequence 
     try:
@@ -214,7 +218,7 @@ if __name__ == "__main__":
     now = datetime.now()
     # If it is Friday after 4:50 PM, skip the prediction pass and let the Retrain Task take over
     #if now.weekday() == 4 and now.hour >= 16 and now.minute >= 50:
-    if now.weekday() == 4 and now.hour >= 16 and now.minute >= 50:
+    if now.weekday() == 4:
         print("Friday Market Closing Sequence initiated. Skipping prediction pass for DVC Retraining.")
         sys.exit(99) # <--- Use a custom exit code to signal the batch file
     else:
