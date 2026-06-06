@@ -34,6 +34,7 @@ from fetch.fetch_data import fetch_ohlcv, make_labels, preprocess
 from features.feature_engineering import engineer_features, get_feature_columns
 from utils.email_utils import send_email
 from utils.trade_utils import manage_ic_markets_scheduled_trade
+from datetime import datetime, timedelta
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
@@ -149,7 +150,19 @@ def get_signal_message(pred: int, proba: np.ndarray | None, last_date) -> str:
     # Combine everything into one string
     return "\n".join(lines)
 
+def is_nfp_friday(date_obj):
+    # NFP is always the first Friday of the month
+    if date_obj.weekday() == 4 and date_obj.day <= 7:
+        return True
+    return False
+
 def main():
+    now = datetime.now()
+    if is_nfp_friday(now):
+        nlp_message = f"Today is {now.strftime('%A %d %b %Y')}, which is NFP Friday. The Non-Farm Payroll report is released today, often causing high volatility in the markets. To protect capital, we are skipping the trade generation for today. Please review the NFP report and adjust your trading strategy accordingly."
+        send_email(nlp_message)
+        print("Today is NFP Friday! Skipping trade generation to protect capital.")
+        return
     parser = argparse.ArgumentParser()
     #parser.add_argument("--model",         required=False, help="Model name (e.g. LightGBM)")
     parser.add_argument("--model-path",    default=None,  help="Local model file path")
@@ -195,14 +208,13 @@ def main():
     except Exception as e:
         log.error(f"Error during trade management: {e}")
         log.info("Continuing without trade execution.")
-    
 
 
 if __name__ == "__main__":
     now = datetime.now()
     # If it is Friday after 4:50 PM, skip the prediction pass and let the Retrain Task take over
     #if now.weekday() == 4 and now.hour >= 16 and now.minute >= 50:
-    if now.weekday() > 4 and now.hour >= 16 and now.minute >= 50:
+    if now.weekday() == 4 and now.hour >= 16 and now.minute >= 50:
         print("Friday Market Closing Sequence initiated. Skipping prediction pass for DVC Retraining.")
         sys.exit(99) # <--- Use a custom exit code to signal the batch file
     else:
