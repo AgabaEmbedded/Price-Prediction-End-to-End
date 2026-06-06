@@ -219,14 +219,14 @@ if __name__ == "__main__":
 
     now = datetime.now()   
     
-    MAINTENANCE_MODE = True 
+    MAINTENANCE_MODE = False 
     
     if MAINTENANCE_MODE:
         print("[ALERT] Triggering maintenance mode. Server will remain awake for debugging.")
         sys.exit(100)
 
     elif now.weekday() == 4:
-        print("[INFO] Friday execution complete. Signaling batch script to run DVC Retraining.")
+        print("[INFO] Signaling batch script to run DVC Retraining.")
         sys.exit(99)
     else:
 
