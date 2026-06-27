@@ -5,7 +5,7 @@ stages:
     deps:
     - path: configs/config.yaml
       hash: md5
-      md5: 7abf5ff7934b45fc9e6ca835c0cc7087
+      md5: cf519396d3dd56de1f49f4d546b7816b
       size: 4144
     - path: fetch/fetch_data.py
       hash: md5
@@ -25,7 +25,7 @@ stages:
     deps:
     - path: configs/config.yaml
       hash: md5
-      md5: 7abf5ff7934b45fc9e6ca835c0cc7087
+      md5: cf519396d3dd56de1f49f4d546b7816b
       size: 4144
     - path: data/fetch/processed_eurusd.parquet
       hash: md5
@@ -105,7 +105,7 @@ stages:
       size: 205
     - path: configs/config.yaml
       hash: md5
-      md5: 7abf5ff7934b45fc9e6ca835c0cc7087
+      md5: cf519396d3dd56de1f49f4d546b7816b
       size: 4144
     - path: data/features/feature_columns.json
       hash: md5
