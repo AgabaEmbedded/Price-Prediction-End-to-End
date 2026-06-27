@@ -272,8 +272,9 @@ def main():
 
         for name, cls, kwargs in dl_configs:
             try:
-                r = search_dl_model(name, cls, {**kwargs}, X_seq, y_seq, cfg)
-                results.append(r)
+                #r = search_dl_model(name, cls, {**kwargs}, X_seq, y_seq, cfg)
+                #results.append(r)
+                pass
             except Exception as e:
                 log.error(f"  {name} failed: {e}")
 
