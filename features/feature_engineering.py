@@ -117,7 +117,7 @@ def _mfi(high, low, close, volume, period: int = 14) -> pd.Series:
 # Main feature engineering function
 # ─────────────────────────────────────────────────────────────────────────────
 
-def engineer_features(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
+def engineer_features(df: pd.DataFrame, cfg: dict, ticker_id: str) -> pd.DataFrame:
     """
     Takes the processed OHLCV + label DataFrame and returns a DataFrame
     with all engineered features appended.
@@ -291,7 +291,7 @@ def engineer_features(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     # ── Drop NaN rows created by rolling windows ─────────────────────────────
     
     before = len(feat)
-    feat.to_csv("data/features/featured_eurusd.csv", index=False)
+    feat.to_csv(f"data/features/{ticker_id}/features.csv", index=False)
     feat = feat.dropna()
     log.info(f"  Dropped {before - len(feat)} NaN rows → {len(feat)} rows remain")
 
@@ -353,49 +353,55 @@ def main():
     cfg = load_config()
     dc  = cfg["data"]
     fc  = cfg["features"]
+    tickers = dc["tickers"]
+    init_proc_path = Path(dc["processed_path"])
 
-    proc_path = Path(dc["processed_path"])
-    out_path = Path(fc["featured_path"])
-    out_path.mkdir(exist_ok=True)     
-    if not proc_path.exists():
-        raise FileNotFoundError(f"{proc_path} not found. Run data/fetch_data.py first.")
+    for ticker in tickers:
+        ticker_id = ticker.lower().split('=')[0]
+        
+        proc_path = Path(init_proc_path).with_name(f"{ticker_id}_processed.parquet")
+        out_path = Path(fc["featured_path"]+f"/{ticker_id}")
+        out_path.mkdir(parents=True, exist_ok=True)
+        if not proc_path.exists():
+            raise FileNotFoundError(f"{proc_path} not found. Run data/fetch_data.py first.")
 
-    df = pd.read_parquet(proc_path)
-    log.info(f"Loaded processed data: {len(df)} rows, {len(df.columns)} columns")
+        df = pd.read_parquet(proc_path)
+        log.info(f"Loaded processed data: {len(df)} rows, {len(df.columns)} columns")
 
-    # Feature engineering
-    feat_df = engineer_features(df, cfg)
-    feature_cols = get_feature_columns(feat_df)
-    log.info(f"Total features engineered: {len(feature_cols)}")
+        # Feature engineering
+        feat_df = engineer_features(df, cfg, ticker_id)
+        feature_cols = get_feature_columns(feat_df)
+        log.info(f"Total features engineered: {len(feature_cols)}")
 
-    # Save the full featured dataset
-    feat_path = out_path / "featured_eurusd.parquet"
-    feat_df.to_parquet(feat_path)
-    log.info(f"Featured dataset saved → {feat_path}")
+        # Save the full featured dataset
+        feat_path = out_path / f"features.parquet"
+        feat_df.to_parquet(feat_path)
+        log.info(f"Featured dataset saved → {feat_path}")
 
-    # Save feature column list
-    import json
-    col_path = out_path / "feature_columns.json"
-    with open(col_path, "w") as f:
-        json.dump(feature_cols, f, indent=2)
-    log.info(f"Feature column list saved → {col_path}")
+        # Save feature column list
+        import json
+        col_path = out_path / "feature_columns.json"
+        with open(col_path, "w") as f:
+            json.dump(feature_cols, f, indent=2)
+        log.info(f"Feature column list saved → {col_path}")
 
-    # Build & save sequence arrays for DL models
-    seq_len = fc["sequence_length"]
-    X_seq, y_seq, dates_seq = build_sequences(feat_df, feature_cols, "label", seq_len)
+        # Build & save sequence arrays for DL models
+        seq_len = fc["sequence_length"]
+        X_seq, y_seq, dates_seq = build_sequences(feat_df, feature_cols, "label", seq_len)
 
-    seq_path = out_path / "sequences.npz"
-    np.savez_compressed(seq_path, X=X_seq, y=y_seq, dates=dates_seq.astype(str))
-    log.info(f"Sequence arrays saved → {seq_path}  (shape: {X_seq.shape})")
+        seq_path = out_path / "sequences.npz"
+        np.savez_compressed(seq_path, X=X_seq, y=y_seq, dates=dates_seq.astype(str))
+        log.info(f"Sequence arrays saved → {seq_path}  (shape: {X_seq.shape})")
 
-    print("\n" + "="*60)
-    print(f"  FEATURE ENGINEERING COMPLETE")
-    print("="*60)
-    print(f"  Rows:     {len(feat_df)}")
-    print(f"  Features: {len(feature_cols)}")
-    print(f"  Sequences: {X_seq.shape}")
-    print("="*60)
-    print("  Next step → python training/search_models.py")
+        print("\n" + "="*60)
+        print(f"{ticker_id.upper()}  FEATURE ENGINEERING COMPLETE")
+        print("="*60)
+        print(f"  Rows:     {len(feat_df)}")
+        print(f"  Features: {len(feature_cols)}")
+        print(f"  Sequences: {X_seq.shape}")
+        print("="*60)
+    print("Completed feature engineering for all tickers.")
+    print("Next step → python training/search_models.py")
 
 
 if __name__ == "__main__":

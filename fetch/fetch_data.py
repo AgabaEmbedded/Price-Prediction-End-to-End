@@ -24,6 +24,8 @@ import pandas as pd
 
 import sys
 import os
+
+from yfinance import ticker
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import logging
@@ -215,33 +217,39 @@ def main():
 
     # Paths
     raw_path = Path(dc["raw_path"])
-    proc_path = Path(dc["processed_path"])
-    raw_path.parent.mkdir(parents=True, exist_ok=True)
+    init_proc_path = Path(dc["processed_path"])
+    tickers = dc["tickers"]
+    
+    for index, ticker in enumerate(tickers):
+        ticker_id = ticker.lower().split('=')[0]
+        raw_path = Path(raw_path).with_name(f"{ticker_id}_raw.parquet")
+        proc_path = Path(init_proc_path).with_name(f"{ticker_id}_processed.parquet")
+        raw_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # 1. Fetch
-    df = fetch_ohlcv(dc["ticker"], dc["start_date"], dc["end_date"], interval = dc.get("timeframe", "1d"))
-    df.to_parquet(raw_path)
-    log.info(f"Raw data saved → {raw_path}")
+        # 1. Fetch
+        df = fetch_ohlcv(ticker, dc["start_date"], dc["end_date"], interval = dc.get("timeframe", "1d"))
+        df.to_parquet(raw_path)
+        log.info(f"Raw data saved → {raw_path}")
 
-    # 2. Label
-    df = make_labels(df, dc["strong_threshold"], dc["weak_threshold"])
+        # 2. Label
+        df = make_labels(df, dc["strong_thresholds"][index], dc["weak_thresholds"][index])
 
-    # 3. Preprocess
-    df = preprocess(df)
+        # 3. Preprocess
+        df = preprocess(df)
 
-    # 4. Save processed (with labels, without features — features added later)
-    df.to_parquet(proc_path)
-    log.info(f"Processed data saved → {proc_path}")
+        # 4. Save processed (with labels, without features — features added later)
+        df.to_parquet(proc_path)
+        log.info(f"Processed {ticker_id} data saved → {proc_path}")
 
-    # 5. Quick split preview
-    train, val, test = chronological_split(df, dc["train_ratio"], dc["val_ratio"])
+        # 5. Quick split preview
+        train, val, test = chronological_split(df, dc["train_ratio"], dc["val_ratio"])
 
-    # 6. Print a quick summary
-    print("\n" + "="*60)
-    print("  DATA SUMMARY")
-    print("="*60)
-    print(df[["open", "high", "low", "close", "volume", "log_return", "label"]].describe().round(4))
-    print("="*60)
+        # 6. Print a quick summary
+        print("\n" + "="*60)
+        print(f"{ticker_id.upper()}  DATA SUMMARY")
+        print("="*60)
+        print(df[["open", "high", "low", "close", "volume", "log_return", "label"]].describe().round(4))
+        print("="*60)
     print("Done! Next step → python features/feature_engineering.py")
 
 
