@@ -3,3 +3,6 @@
 .env
 search_leaderboard.csv
 /saved_models
+**/__pycache__/
+*.pyc
+dvc.lock
