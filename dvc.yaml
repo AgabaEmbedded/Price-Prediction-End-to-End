@@ -5,26 +5,22 @@ stages:
       - fetch/fetch_data.py
       - configs/config.yaml
     outs:
-      - data/fetch/processed_eurusd.parquet
-      - data/fetch/raw_eurusd.parquet
+      - data/fetch
+      
   feature_engineering:
     cmd: python features/feature_engineering.py
     deps:
       - features/feature_engineering.py
-      - data/fetch/processed_eurusd.parquet
+      - data/fetch
       - configs/config.yaml
     outs:
-      - data/features/featured_eurusd.parquet
-      - data/features/feature_columns.json
-      - data/features/sequences.npz
+      - data/features
       
   final_training:
-    cmd: python training/train_final.py --model RandomForest
+    cmd: python training/train_final.py
     deps:
       - training/train_final.py
-      - data/features/featured_eurusd.parquet
-      - data/features/feature_columns.json
-      - best_params.json
+      - data/features
       - configs/config.yaml
     outs:
       - saved_models

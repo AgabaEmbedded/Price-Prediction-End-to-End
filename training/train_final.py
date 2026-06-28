@@ -379,8 +379,8 @@ def main():
     cfg = load_config()
     setup_mlflow(cfg)
 
-    tickers = list(args.ticker) if args.ticker else cfg["data"]["tickers"]
-    models = list(args.model) if args.model else cfg["training"]["models"]
+    tickers = [args.ticker] if args.ticker else cfg["data"]["tickers"]
+    models = [args.model] if args.model else cfg["training"]["models"]
 
     for model_name, ticker in zip(models, tickers):
         ticker_id = ticker.lower().split('=')[0]
@@ -438,7 +438,7 @@ def main():
 
             if is_dl:
                 model, scaler, y_val_pred, y_test_pred, metrics, learning_history = \
-                    train_dl(args.model, best_params, cfg, data)
+                    train_dl(model_name, best_params, cfg, data)
             else:
                 model, y_val_pred, y_test_pred, metrics = \
                     train_sklearn(model_name, best_params, cfg, data, full_training=full_training)

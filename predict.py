@@ -24,13 +24,14 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import argparse
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from pathlib import Path
 from datetime import datetime
 
 import numpy as np
 import pandas as pd
 import yaml
+import time
 
 from fetch.fetch_data import fetch_ohlcv, make_labels, preprocess
 from features.feature_engineering import engineer_features, get_feature_columns
@@ -104,11 +105,11 @@ def predict_from_registry(feature_cols: list[str], cfg: dict, ticker_id: str, mo
 def print_signal(pred_dict: dict):
     print("\n" + "="*55)
     print(f"  DAILY SIGNAL  —  {datetime.today().strftime('%A %d %b %Y')}")
-    print(f"  Model: Registry Latest  |  Based on data up to: {last_date.date()}")
+    print(f"  Model: Registry Latests")
     print("="*55)
 
     for ticker_id, (pred, proba, last_date) in pred_dict.items():
-        print(f"\n   Ticker: {ticker_id.upper()}")
+        print(f"\n   Ticker: {ticker_id.upper()} |  Based on data up to: {last_date.date()}")
         print(f"\n   📊  SIGNAL:  {SIGNAL_NAMES[pred]}")
         print(f"   📌  ACTION:  {SIGNAL_ACTIONS[pred]}\n")
 
@@ -132,13 +133,14 @@ def get_signal_message(pred_dict: dict) -> str:
     border = "=" * 30
     lines.append(border)
     lines.append(f"   DAILY SIGNAL  —  {datetime.today().strftime('%A %d %b %Y')}")
-    lines.append(f"   Model: Registry Latest  |  Based on data up to: {last_date.date()}")
+    lines.append(f"   Model: Registry Latest")
     lines.append(border)
     
     for ticker_id, (pred, proba, last_date) in pred_dict.items():
-        lines.append(f"\n   Ticker: {ticker_id.upper()}")
+        lines.append(f"\n   Ticker: {ticker_id.upper()} |  Based on data up to: {last_date.date()}")
         lines.append(f"\n   📊  SIGNAL:  {SIGNAL_NAMES[pred]}")
         lines.append(f"   📌  ACTION:  {SIGNAL_ACTIONS[pred]}\n")
+
 
         if proba is not None:
             lines.append("   Probability breakdown:")
@@ -157,35 +159,7 @@ def get_signal_message(pred_dict: dict) -> str:
 
     # Combine everything into one string
     return "\n".join(lines)
-def get_signal_message_old(pred_dict: dict) -> str:
-    lines = []
-    
-    border = "=" * 30
-    lines.append(border)
-    lines.append(f"   DAILY SIGNAL  —  {datetime.today().strftime('%A %d %b %Y')}")
-    lines.append(f"   Model: Registry Latest  |  Based on data up to: {last_date.date()}")
-    lines.append(border)
-    
-    
-    lines.append(f"\n   📊  SIGNAL:  {SIGNAL_NAMES[pred]}")
-    lines.append(f"   📌  ACTION:  {SIGNAL_ACTIONS[pred]}\n")
 
-    if proba is not None:
-        lines.append("   Probability breakdown:")
-        labels = ["Strong Sell", "Sell", "Hold", "Buy", "Strong Buy"]
-        bar_max = 30
-        for i, (lbl, p) in enumerate(zip(labels, proba)):
-            bar = "█" * int(p * bar_max)
-            arrow = " ◄" if i == pred else ""
-            lines.append(f"    {lbl:>12}  {bar:<{bar_max}}  {p*100:5.1f}%{arrow}")
-
-    lines.append("\n   ⚠️  DISCLAIMER: This is a research model for portfolio/learning")
-    lines.append("     purposes only. NOT financial advice. Always use proper")
-    lines.append("     risk management before trading.")
-    lines.append(border)
-
-    # Combine everything into one string
-    return "\n".join(lines)
 
 def is_nfp_friday(date_obj):
     # NFP is always the first Friday of the month
@@ -203,9 +177,10 @@ def main():
 
 
     cfg = load_config()
-    tickers = list(args.ticker) if args.ticker else cfg["data"]["tickers"]
+    tickers = [args.ticker] if args.ticker else cfg["data"]["tickers"]
     model_names = cfg["training"]["models"]
-    model_names = list(model_names[tickers.index(tickers[0])]) if args.ticker else model_names
+    model_names = [model_names[tickers.index(tickers[0])]] if args.ticker else model_names
+    print(model_names)
     size = cfg["trade"]["size"]
     IC_MT5_PATH = cfg["trade"]["IC_MT5_PATH"]
 
@@ -247,24 +222,53 @@ def main():
     IC_MT5_PATH = r"C:\Program Files\MetaTrader 5\terminal64.exe"
   
     send_email(message)
-    # Trigger management sequence 
-    try:
-        manage_ic_markets_scheduled_trade(
-            symbol="EURUSD", 
-            direction=TRADE_DIRECTIONS[pred], 
-            volume=size, 
-            terminal_path=IC_MT5_PATH
-        )
-    except Exception as e:
-        log.error(f"Error during trade management: {e}")
-        log.info("Continuing without trade execution.")
+    # Trigger management sequence
+    for ticker_id, (pred, proba, last_date) in pred_dict.items():
+        try:
+            manage_ic_markets_scheduled_trade(
+                symbol=ticker_id.upper(), 
+                direction=TRADE_DIRECTIONS[pred], 
+                volume=size, 
+                terminal_path=IC_MT5_PATH
+            )
+        except Exception as e:
+            log.error(f"Error during trade management: {e}")
+            log.info("Continuing without trade execution.")
+    time.sleep(120)
+    #Retry 1: Trigger management sequence to ensure trade execution
+    for ticker_id, (pred, proba, last_date) in pred_dict.items():
+        try:
+            manage_ic_markets_scheduled_trade(
+                symbol=ticker_id.upper(), 
+                direction=TRADE_DIRECTIONS[pred], 
+                volume=size, 
+                terminal_path=IC_MT5_PATH
+            )
+        except Exception as e:
+            log.error(f"Error during trade management: {e}")
+            log.info("Continuing without trade execution.")
+    
+
+    time.sleep(120)
+    #Retry 1: Trigger management sequence to ensure trade execution
+    for ticker_id, (pred, proba, last_date) in pred_dict.items():
+        try:
+            manage_ic_markets_scheduled_trade(
+                symbol=ticker_id.upper(), 
+                direction=TRADE_DIRECTIONS[pred], 
+                volume=size, 
+                terminal_path=IC_MT5_PATH
+            )
+        except Exception as e:
+            log.error(f"Error during trade management: {e}")
+            log.info("Continuing without trade execution.")
 
 
 
 if __name__ == "__main__":
-    main() 
+    start_time = time.time()
 
-    """now = datetime.now()   
+    now = datetime.now()   
     
     MAINTENANCE_MODE = False 
     
@@ -283,4 +287,5 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"[CRITICAL ERROR] Main execution crashed: {e}")
             print("Safeguarding server: switching to maintenance mode to prevent data loss.")
-            sys.exit(100)"""
+            sys.exit(100)
+    print(f"[INFO] Total execution time: {time.time() - start_time:.2f} seconds")

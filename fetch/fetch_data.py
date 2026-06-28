@@ -14,9 +14,6 @@ Labels:
 Run:
     python data/fetch_data.py
 """
-from alpaca.data.historical import CryptoHistoricalDataClient, StockHistoricalDataClient
-from alpaca.data.requests import CryptoBarsRequest
-from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
 from datetime import datetime, timedelta
 import pandas as pd
 
@@ -51,55 +48,14 @@ def load_config(path: str = "configs/config.yaml") -> dict:
         return yaml.safe_load(f)
 
 
-
-def fetch_ohlcv_via_alpaca(ticker: str, start_str: str, end_str: str):
-
-    # 1. Initialize client (Use Crypto or Stock client depending on asset)
-    # Leave API keys blank for basic free public crypto data tier
-    client = CryptoHistoricalDataClient() 
-
-    # 2. Define a custom 4-Hour Timeframe object
-    four_hour_tf = TimeFrame(4, TimeFrameUnit.Hour)
-
-    # 3. Structure the request parameters
-    request_params = CryptoBarsRequest(
-        symbol_or_symbols=["ETH/USD"],
-        timeframe=four_hour_tf,
-        start=datetime.strptime(start_str, "%Y-%m-%d"),
-        end=datetime.strptime(end_str, "%Y-%m-%d")  # Include end date fully
-    )
-
-    # 4. Pull bars and extract directly to a Pandas DataFrame
-    print("Fetching 4H data from Alpaca endpoints...")
-    bars = client.get_crypto_bars(request_params)
-    df = bars.df
-    
-    df.rename(columns={
-        "open": "Open",
-        "high": "High",
-        "low": "Low",
-        "close": "Close",
-        "volume": "Volume"
-    }, inplace=True)
-    df["Date"] = df.index.map(lambda x: x[1])
-    df.set_index("Date", inplace=True)
-    df.index = pd.to_datetime(df.index)
-    print(df.columns)
-
-    return df
-
-
 # ── Fetch ─────────────────────────────────────────────────────────────────────
 
 def fetch_ohlcv(ticker: str, start: str, end: str | None, interval: str = "1d") -> pd.DataFrame:
     """Download daily OHLCV from yfinance."""
     log.info(f"Downloading {ticker} from {start} to {end or 'today'}")
     end = end or datetime.today().strftime("%Y-%m-%d")
-    if interval == "4h":
-        
-        df = fetch_ohlcv_via_alpaca(ticker, start, end)
-    else:
-        df = yf.download(ticker, start=start, end=end, auto_adjust=True, progress=False, interval=interval)
+    
+    df = yf.download(ticker, start=start, end=end, auto_adjust=True, progress=False, interval=interval)
 
     if df.empty:
         raise ValueError(f"No data returned for ticker '{ticker}'. Check your internet connection.")
@@ -130,8 +86,10 @@ def make_labels(
     (today's features → tomorrow's outcome).
     """
     # Log return of next trading day close vs today's close
+    
     df["log_return"] = np.log(df["close"] / df["close"].shift(1))
     df["next_log_return"] = df["log_return"].shift(-1)   # target
+    
 
     def _classify(r: float) -> int:
         if r > strong_threshold:
@@ -168,10 +126,11 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     - Sanity checks
     """
     # Forward fill (handles holidays where market was closed mid-week)
-    df = df.ffill()
-
+    #df = df.ffill()
+    print(df.tail())
     # Drop the last row — its label (next_log_return) is NaN
     df = df.dropna(subset=["next_log_return", "label"])
+    print(df.tail())
 
     # Sanity checks
     assert (df["high"] >= df["low"]).all(), "High < Low found in data!"

@@ -40,7 +40,7 @@ def send_email(message: str):
     sender = "sundayabraham357@gmail.com"
     password = APP_PASSWORD  # Use an App Password, not your main password
     recipient = "sundayabraham025@gmail.com"
-    subject = "EUR/USD Daily Signal"
+    subject = "Daily Signal"
     body = message
 
     configure_and_send_email(sender, password, recipient, subject, body)
