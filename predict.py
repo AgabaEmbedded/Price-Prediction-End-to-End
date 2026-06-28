@@ -247,21 +247,21 @@ def main():
     #    except Exception as e:
     #        log.error(f"Error during trade management: {e}")
     #        log.info("Continuing without trade execution.")
-    #
+    
 
-    #time.sleep(120)
+    time.sleep(120)
     #Retry 1: Trigger management sequence to ensure trade execution
-    #for ticker_id, (pred, proba, last_date) in pred_dict.items():
-    #    try:
-    #        manage_ic_markets_scheduled_trade(
-    #            symbol=ticker_id.upper(), 
-    #            direction=TRADE_DIRECTIONS[pred], 
-    #            volume=size, 
-    #            terminal_path=IC_MT5_PATH
-    #        )
-    #    except Exception as e:
-    #        log.error(f"Error during trade management: {e}")
-    #        log.info("Continuing without trade execution.")
+    for ticker_id, (pred, proba, last_date) in pred_dict.items():
+        try:
+            manage_ic_markets_scheduled_trade(
+                symbol=ticker_id.upper(), 
+                direction=TRADE_DIRECTIONS[pred], 
+                volume=size, 
+                terminal_path=IC_MT5_PATH
+            )
+        except Exception as e:
+            log.error(f"Error during trade management: {e}")
+            log.info("Continuing without trade execution.")
 
 
 
