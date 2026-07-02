@@ -6,7 +6,7 @@
 
 # ── Data ──────────────────────────────────────
 data:
-  tickers: ["EURUSD=X", "EURGBP=X", "GBPUSD=X", "EURJPY=X", "JPYUSD=X", "USDCAD=X"]           # yfinance ticker for EUR/USD
+  tickers: ["EURUSD=X"]#, "EURGBP=X", "GBPUSD=X", "EURJPY=X", "USDJPY=X", "USDCAD=X"]           # yfinance ticker for EUR/USD
   timeframe: "1d"           # Data granularity (e.g., 1d, 1h)
   start_date: "2000-01-01"     # Historical data start
   end_date: null               # null = today
@@ -19,8 +19,8 @@ data:
   # |Return| <= weak_threshold  → Hold        (2)
   # Returns < -weak_threshold   → Sell        (1)
   # Returns < -strong_threshold → Strong Sell (0)
-  strong_thresholds: [0.005837, 0.004917, 0.005768, 0.006508, 0.006219, 0.005261]   # 0.5%
-  weak_thresholds: [0.001378, 0.001193, 0.00147, 0.001554, 0.001481, 0.001236]   # 0.1%
+  strong_thresholds: [0.005837]#, 0.004917, 0.005768, 0.006508, 0.006219, 0.005261]   # 0.5%
+  weak_thresholds: [0.001378]#, 0.001193, 0.00147, 0.001554, 0.001481, 0.001236]   # 0.1%
 
   # Train/Val/Test split (chronological — no shuffle)
   train_ratio: 0.70
