@@ -181,6 +181,7 @@ def train_sklearn(model_name: str, best_params: dict | None, cfg: dict, data: tu
     
 
     if full_training:
+        
         log.info("Full training mode: using train + val=test for final model.")
         X_trainval = np.concatenate([X_train, X_val, X_test], axis=0)
         y_trainval = np.concatenate([y_train, y_val, y_test], axis=0)
@@ -208,11 +209,21 @@ def train_sklearn(model_name: str, best_params: dict | None, cfg: dict, data: tu
     y_val_pred  = model.predict(X_val)
     y_test_pred = model.predict(X_test)
 
+
+    
+    test_df = pd.DataFrame({
+        "date": test_dates,
+        "actual": y_test,
+        "predicted": y_test_pred}
+        )
+    
+    test_df.to_csv(f"test_predictions_{model_name}.csv", index=False)
+
     metrics_val  = _compute_metrics(y_val,  y_val_pred,  prefix="val")
     metrics_test = _compute_metrics(y_test, y_test_pred, prefix="test")
 
-    log.info(f"\n  Validation:\n{classification_report(y_val, y_val_pred, target_names=['StrongSell','Sell','Hold','Buy','StrongBuy'])}")
-    log.info(f"\n  Test:\n{classification_report(y_test, y_test_pred, target_names=['StrongSell','Sell','Hold','Buy','StrongBuy'])}")
+    log.info(f"\n  Validation:\n{classification_report(y_val, y_val_pred, target_names=['Sell','Buy'])}")
+    log.info(f"\n  Test:\n{classification_report(y_test, y_test_pred, target_names=['Sell','Buy'])}")
 
     return model, y_val_pred, y_test_pred, {**metrics_val, **metrics_test}
 
@@ -375,6 +386,7 @@ def main():
     
     args = parser.parse_args()
     full_training = args.full.lower() == "true" if args.full else False
+    print(f"Full training mode: {full_training}")
     
     cfg = load_config()
     setup_mlflow(cfg)

@@ -41,13 +41,12 @@ from datetime import datetime, timedelta
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
-TRADE_DIRECTIONS = {0: "SELL", 1: "SELL", 2: "HOLD", 3: "BUY", 4: "BUY"}
-SIGNAL_NAMES   = {0: "STRONG SELL 🔴", 1: "SELL 🟠", 2: "HOLD ⚪", 3: "BUY 🟢", 4: "STRONG BUY 💚"}
-SIGNAL_ACTIONS = {0: "SHORT — large downward move expected",
-                  1: "SHORT — small downward move expected",
-                  2: "STAY OUT — no significant move expected",
-                  3: "LONG  — small upward move expected",
-                  4: "LONG  — large upward move expected"}
+TRADE_DIRECTIONS = {0: "SELL", 1: "BUY", 2: "HOLD"}
+SIGNAL_NAMES   = {0: "SELL 🔴", 1: "BUY 🟢", 2: "HOLD ⚪"}
+SIGNAL_ACTIONS = {0: "SHORT — downward move expected",
+                  1: "LONG  — upward move expected",
+                  2: "STAY OUT — market may be volatile or uncertain",
+                  }
 
 
 def load_config(path="configs/config.yaml") -> dict:
@@ -207,6 +206,7 @@ def main():
             pred, proba, last_date = predict_from_registry(feature_cols, cfg, ticker_id, model_name)
         pred_dict[ticker_id] = [pred, proba, last_date]
 
+    print(pred_dict)
     message = get_signal_message(pred_dict)
 
 
@@ -214,7 +214,7 @@ def main():
     if is_nfp_friday(now):
         message = f"Today is {now.strftime('%A %d %b %Y')}, which is NFP Friday. The Non-Farm Payroll report is released today, often causing high volatility in the markets. To protect capital, we are skipping the trade generation for today. Please review the NFP report and adjust your trading strategy accordingly.\n\n{message}"          
         for ticker_id in pred_dict.keys():
-            pred_dict[ticker_id] = 2
+            pred_dict[ticker_id][0] = 2
         
 
 
@@ -266,7 +266,6 @@ def main():
 
 
 if __name__ == "__main__":
-    start_time = time.time()
 
     now = datetime.now()   
     
@@ -288,4 +287,3 @@ if __name__ == "__main__":
             print(f"[CRITICAL ERROR] Main execution crashed: {e}")
             print("Safeguarding server: switching to maintenance mode to prevent data loss.")
             sys.exit(100)
-    print(f"[INFO] Total execution time: {time.time() - start_time:.2f} seconds")
