@@ -205,7 +205,7 @@ def main():
             pred, proba, last_date = predict_sklearn(args.model_path, feature_cols, cfg, ticker_id, model_name)
         else:
             pred, proba, last_date = predict_from_registry(feature_cols, cfg, ticker_id, model_name)
-        pred_dict[ticker_id] = (pred, proba, last_date)
+        pred_dict[ticker_id] = [pred, proba, last_date]
 
     message = get_signal_message(pred_dict)
 
