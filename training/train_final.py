@@ -181,6 +181,7 @@ def train_sklearn(model_name: str, best_params: dict | None, cfg: dict, data: tu
     
 
     if full_training:
+        
         log.info("Full training mode: using train + val=test for final model.")
         X_trainval = np.concatenate([X_train, X_val, X_test], axis=0)
         y_trainval = np.concatenate([y_train, y_val, y_test], axis=0)
@@ -385,6 +386,7 @@ def main():
     
     args = parser.parse_args()
     full_training = args.full.lower() == "true" if args.full else False
+    print(f"Full training mode: {full_training}")
     
     cfg = load_config()
     setup_mlflow(cfg)
