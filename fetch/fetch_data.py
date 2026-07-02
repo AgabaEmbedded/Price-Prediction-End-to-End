@@ -75,9 +75,7 @@ def fetch_ohlcv(ticker: str, start: str, end: str | None, interval: str = "1d") 
 # ── Label creation ────────────────────────────────────────────────────────────
 
 def make_labels(
-    df: pd.DataFrame,
-    strong_threshold: float = 0.005,
-    weak_threshold: float = 0.001,
+    df: pd.DataFrame
 ) -> pd.DataFrame:
     """
     Compute next-day log return and map to 5-class label.
@@ -183,7 +181,7 @@ def main():
         log.info(f"Raw data saved → {raw_path}")
 
         # 2. Label
-        df = make_labels(df, dc["strong_thresholds"][index], dc["weak_thresholds"][index])
+        df = make_labels(df)
 
         # 3. Preprocess
         df = preprocess(df)

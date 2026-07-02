@@ -221,7 +221,7 @@ def main():
     print_signal(pred_dict)
     IC_MT5_PATH = r"C:\Program Files\MetaTrader 5\terminal64.exe"
   
-    #send_email(message)
+    send_email(message)
     # Trigger management sequence
     for ticker_id, (pred, proba, last_date) in pred_dict.items():
         try:
@@ -266,8 +266,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
-    start_time = time.time()
 
     now = datetime.now()   
     
@@ -283,10 +281,9 @@ if __name__ == "__main__":
     else:
 
         try:
-            #main()
+            main()
             sys.exit(0)
         except Exception as e:
             print(f"[CRITICAL ERROR] Main execution crashed: {e}")
             print("Safeguarding server: switching to maintenance mode to prevent data loss.")
             sys.exit(100)
-    print(f"[INFO] Total execution time: {time.time() - start_time:.2f} seconds")
