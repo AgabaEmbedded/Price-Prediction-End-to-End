@@ -63,7 +63,7 @@ def get_latest_features(cfg: dict, feature_cols: list[str], ticker_id: str) -> n
     start = (datetime.today() - timedelta(days=600)).strftime("%Y-%m-%d")
 
     df = fetch_ohlcv(dc["tickers"][index], start, end)
-    df = make_labels(df, dc["strong_thresholds"][index], dc["weak_thresholds"][index])
+    df = make_labels(df)
     df = preprocess(df)
     feat_df = engineer_features(df, cfg, ticker_id)
 
@@ -179,7 +179,7 @@ def main():
     tickers = [args.ticker] if args.ticker else cfg["data"]["tickers"]
     model_names = cfg["training"]["models"]
     model_names = [model_names[tickers.index(tickers[0])]] if args.ticker else model_names
-    print(model_names)
+    
     size = cfg["trade"]["size"]
     IC_MT5_PATH = cfg["trade"]["IC_MT5_PATH"]
 
@@ -206,7 +206,7 @@ def main():
             pred, proba, last_date = predict_from_registry(feature_cols, cfg, ticker_id, model_name)
         pred_dict[ticker_id] = [pred, proba, last_date]
 
-    print(pred_dict)
+    
     message = get_signal_message(pred_dict)
 
 
@@ -286,4 +286,4 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"[CRITICAL ERROR] Main execution crashed: {e}")
             print("Safeguarding server: switching to maintenance mode to prevent data loss.")
-            sys.exit(100)
+            sys.exit(0)
