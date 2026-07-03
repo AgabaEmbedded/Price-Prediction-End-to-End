@@ -6,3 +6,5 @@ search_leaderboard.csv
 **/__pycache__/
 *.pyc
 dvc.lock
+/plots
+test_predictions_RandomForest.csv
