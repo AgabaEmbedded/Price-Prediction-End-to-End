@@ -34,6 +34,9 @@ import pandas as pd
 import yfinance as yf
 import yaml
 
+print(logging.getLogger().level)
+print(logging.getLogger().handlers)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -88,6 +91,8 @@ def make_labels(
     df["log_return"] = np.log(df["close"] / df["close"].shift(1))
     df["next_log_return"] = df["log_return"].shift(-1)   # target
     df["label"] = np.sign(df["next_log_return"])  # -1, 0, +1
+
+    df = df.ffill()
 
     
 
