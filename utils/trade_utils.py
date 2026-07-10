@@ -73,13 +73,13 @@ def manage_ic_markets_scheduled_trade(
                 
             current_dir = 'BUY' if pos.type == 0 else 'SELL'
             
-            if current_dir == direction:
-                print(f"Active matching {current_dir} trade found for {symbol}. Keeping open.")
-                matching_trade_exists = True
-            else:
-                print(f"Conflicting position found (Ticket: {pos.ticket}). Sending close request...")
-                close_position(pos)
-                time.sleep(1) # Brief cooldown for execution acknowledgment
+            #if current_dir == direction:
+            #    print(f"Active matching {current_dir} trade found for {symbol}. Keeping open.")
+            #    matching_trade_exists = True
+            #else:
+            #    print(f"Conflicting position found (Ticket: {pos.ticket}). Sending close request...")
+            close_position(pos)
+            time.sleep(1) # Brief cooldown for execution acknowledgment
 
     # 4. Route new market order execution
     if not matching_trade_exists and direction in ['BUY', 'SELL']:

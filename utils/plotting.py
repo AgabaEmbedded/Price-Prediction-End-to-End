@@ -49,8 +49,8 @@ plt.rcParams.update({
     "font.family":      "DejaVu Sans",
 })
 
-CLASS_NAMES  = ["Strong Sell", "Sell", "Hold", "Buy", "Strong Buy"]
-CLASS_COLORS = ["#e74c3c", "#e67e22", "#95a5a6", "#2ecc71", "#27ae60"]
+CLASS_NAMES  = ["Sell", "Buy"]
+CLASS_COLORS = ["#e74c3c", "#27ae60"]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -137,7 +137,7 @@ def plot_class_distribution(
 ) -> plt.Figure:
     fig, axes = plt.subplots(1, 3, figsize=(13, 4), sharey=False)
     for ax, (y, label) in zip(axes, [(y_train, "Train"), (y_val, "Val"), (y_test, "Test")]):
-        counts = np.bincount(y, minlength=5)
+        counts = np.bincount(y, minlength=2)
         bars = ax.bar(CLASS_NAMES, counts, color=CLASS_COLORS, edgecolor="#0f1117", linewidth=1)
         ax.set_title(f"{label}  (n={len(y):,})", fontsize=11)
         ax.set_xticklabels(CLASS_NAMES, rotation=30, ha="right", fontsize=9)
@@ -268,8 +268,8 @@ def plot_predictions_over_time(
     # ── Price line ──────────────────────────────────────────────────────────
     ax1.plot(dates_arr, prices_arr, color="#7f8c8d", linewidth=1, alpha=0.8, label="Close Price")
 
-    signal_colors  = {0: "#e74c3c", 1: "#e67e22", 2: "#95a5a6", 3: "#2ecc71", 4: "#27ae60"}
-    signal_markers = {0: "v",       1: "v",       2: "o",       3: "^",       4: "^"}
+    signal_colors  = {0: "#e74c3c", 1:"#27ae60"}
+    signal_markers = {0: "v",       1: "^"}
 
     for cls in range(5):
         mask = y_pred_arr == cls
@@ -313,12 +313,12 @@ def plot_per_class_metrics(
     path: str | None = None,
 ) -> plt.Figure:
     precision, recall, f1, support = precision_recall_fscore_support(
-        y_true, y_pred, labels=list(range(5)), zero_division=0,
+        y_true, y_pred, labels=list(range(2)), zero_division=0,
     )
 
-    x     = np.arange(5)
+    x     = np.arange(2)
     width = 0.25
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig, ax = plt.subplots(figsize=(5, 8))
 
     ax.bar(x - width, precision, width, label="Precision", color="#3498db", alpha=0.85)
     ax.bar(x,         recall,    width, label="Recall",    color="#2ecc71", alpha=0.85)
@@ -353,8 +353,8 @@ def plot_equity_curve(
 ) -> plt.Figure:
     """
     Simulate a simple long/short/flat strategy from predicted signals:
-      4 / 3  → long  (+return)
-      1 / 0  → short (-return)
+      1  → long  (+return)
+      0  → short (-return)
       2      → flat  (0)
 
     Compares against buy-and-hold. No transaction costs.
@@ -364,8 +364,8 @@ def plot_equity_curve(
     returns_arr = np.asarray(actual_returns)
     y_pred_arr  = np.asarray(y_pred)
 
-    signal = np.where(y_pred_arr >= 3,  1.0,
-             np.where(y_pred_arr <= 1, -1.0, 0.0))
+    signal = np.where(y_pred_arr == 1,  1.0,
+             np.where(y_pred_arr == 0, -1.0, 0.0))
 
     strat_returns = signal * returns_arr
     bh_returns    = returns_arr

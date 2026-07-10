@@ -33,9 +33,10 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 import yaml
+import MetaTrader5 as mt5
 
-print(logging.getLogger().level)
-print(logging.getLogger().handlers)
+#print(logging.getLogger().level)
+#print(logging.getLogger().handlers)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -53,12 +54,73 @@ def load_config(path: str = "configs/config.yaml") -> dict:
 
 # ── Fetch ─────────────────────────────────────────────────────────────────────
 
+def fetch_mt5_ohlcv(
+    symbol: str, start_date: str, end_date: datetime = None, timeframe=mt5.TIMEFRAME_D1
+) -> pd.DataFrame:
+    """Connects to MT5 terminal and pulls historical OHLCV data.
+
+    Args:
+        symbol: The broker asset ticker (e.g., "EURUSD", "GBPUSD").
+        start_date: Start date string format 'YYYY-MM-DD'.
+        end_date: datetime object for current cutoff (defaults to now).
+        timeframe: MT5 timeframe constant (default: mt5.TIMEFRAME_D1).
+    """
+    # 1. Initialize connection to MetaTrader 5 terminal
+    # If your terminal is installed in a non-standard path, pass it via:
+    # mt5.initialize(path="C:/Program Files/.../terminal64.exe")
+    if not mt5.initialize(path = r"C:\Program Files\MetaTrader 5\terminal64.exe"):
+        log.error(f"MT5 initialization failed. Error code: {mt5.last_error()}")
+        return pd.DataFrame()
+
+    # 2. Format dates safely
+    date_format = "%Y-%m-%d"
+    start_dt = datetime.strptime(start_date, date_format)
+    end_dt = end_date if end_date is not None else datetime.now()
+
+    log.info(f"Fetching MT5 data for {symbol} from {start_date} to {end_dt.strftime(date_format)}")
+
+    # 3. Request rates from terminal
+    rates = mt5.copy_rates_range(symbol, timeframe, start_dt, end_dt)
+
+    # 4. Shut down the connection safely
+    mt5.shutdown()
+
+    if rates is None or len(rates) == 0:
+        log.error(
+            f"No data returned for symbol '{symbol}'. Ensure the symbol matches your broker market watch window name exactly."
+        )
+        return pd.DataFrame()
+
+    # 5. Convert structure to Pandas DataFrame
+    df = pd.DataFrame(rates)
+
+    # 6. Map columns to match your exact format
+    df["time"] = pd.to_datetime(df["time"], unit="s")
+    df = df.rename(
+        columns={
+            "time": "Date",
+            "open": "Open",
+            "high": "High",
+            "low": "Low",
+            "close": "Close",
+            "tick_volume": "Volume",  # MT5 uses tick_volume for Forex instead of real volume
+        }
+    )
+
+    # Clean up index and unnecessary columns
+    df.set_index("Date", inplace=True)
+    df = df[["Open", "High", "Low", "Close", "Volume"]]
+
+    log.info(f"Successfully pulled {len(df)} rows for {symbol}.")
+    return df
+
 def fetch_ohlcv(ticker: str, start: str, end: str | None, interval: str = "1d") -> pd.DataFrame:
     """Download daily OHLCV from yfinance."""
     log.info(f"Downloading {ticker} from {start} to {end or 'today'}")
     end = end or datetime.today().strftime("%Y-%m-%d")
     
-    df = yf.download(ticker, start=start, end=end, auto_adjust=True, progress=False, interval=interval)
+    #df = yf.download(ticker, start=start, end=end, auto_adjust=True, progress=False, interval=interval)
+    df = fetch_mt5_ohlcv(symbol=ticker.split("=")[0], start_date=start, end_date=datetime.strptime(end, "%Y-%m-%d"))
 
     if df.empty:
         raise ValueError(f"No data returned for ticker '{ticker}'. Check your internet connection.")
@@ -78,7 +140,9 @@ def fetch_ohlcv(ticker: str, start: str, end: str | None, interval: str = "1d") 
 # ── Label creation ────────────────────────────────────────────────────────────
 
 def make_labels(
-    df: pd.DataFrame
+    df: pd.DataFrame,
+    low_threshold: float = 0.005,
+    high_threshold: float = 0.0015
 ) -> pd.DataFrame:
     """
     Compute next-day log return and map to 5-class label.
@@ -97,14 +161,14 @@ def make_labels(
     
 
     def _classify(r: float) -> int:
-        return 1 if r>0 else 0
+        return 0 if r < low_threshold else (2 if r > high_threshold else 1)
 
     df["label"] = df["label"].apply(_classify)
 
     # Distribution summary
     dist = df["label"].value_counts().sort_index()
 
-    names = {0: "Sell", 1: "Buy"}
+    names = {0: "Sell", 1: "Hold", 2: "Buy"}
     log.info("Label distribution:")
     for k, v in dist.items():
         log.info(f"  {names[k]:>10}  ({k}): {v:5d}  ({100*v/len(df):.1f}%)")
@@ -186,7 +250,7 @@ def main():
         log.info(f"Raw data saved → {raw_path}")
 
         # 2. Label
-        df = make_labels(df)
+        df = make_labels(df, low_threshold=dc["weak_thresholds"][index], high_threshold=dc["strong_thresholds"][index])
 
         # 3. Preprocess
         df = preprocess(df)
