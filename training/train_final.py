@@ -215,7 +215,7 @@ def train_sklearn(model_name: str, best_params: dict | None, cfg: dict, data: tu
     metrics_val  = _compute_metrics(y_val,  y_val_pred,  prefix="val")
     metrics_test = _compute_metrics(y_test, y_test_pred, prefix="test")
 
-    log.info(f"\n  Validation:\n{classification_report(y_val,  y_val_pred,  target_names=['Sell','Buy'])}")
+    log.info(f"\n  Validation:\n{classification_report(y_val,  y_val_pred,  target_names=['Sell', 'Buy'])}")
     log.info(f"\n  Test:\n{classification_report(y_test, y_test_pred, target_names=['Sell','Buy'])}")
 
     return model, y_val_pred, y_test_pred, {**metrics_val, **metrics_test}

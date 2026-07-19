@@ -140,9 +140,7 @@ def fetch_ohlcv(ticker: str, start: str, end: str | None, interval: str = "1d") 
 # ── Label creation ────────────────────────────────────────────────────────────
 
 def make_labels(
-    df: pd.DataFrame,
-    strong_threshold: float = 0.005,
-    weak_threshold: float = 0.0015
+    df: pd.DataFrame
 ) -> pd.DataFrame:
     """
     Compute next-day log return and map to 5-class label.
@@ -160,26 +158,15 @@ def make_labels(
 
     
 
-    #def _classify(r: float) -> int:
-    #    return 0 if r < -weak_threshold else (2 if r > weak_threshold else 1)
     def _classify(r: float) -> int:
-        if r > strong_threshold:
-            return 4   # Strong Buy
-        elif r > weak_threshold:
-            return 3   # Buy
-        elif r < -strong_threshold:
-            return 0   # Strong Sell
-        elif r < -weak_threshold:
-            return 1   # Sell
-        else:
-            return 2   # Hold
+        return 1 if r>0 else 0
 
     df["label"] = df["label"].apply(_classify)
 
     # Distribution summary
     dist = df["label"].value_counts().sort_index()
 
-    names = {0: "Strong Sell", 1: "Sell", 2: "Hold", 3: "Buy", 4: "Strong Buy"}
+    names = {0: "Sell", 1: "Buy"}
     log.info("Label distribution:")
     for k, v in dist.items():
         log.info(f"  {names[k]:>10}  ({k}): {v:5d}  ({100*v/len(df):.1f}%)")
@@ -261,7 +248,7 @@ def main():
         log.info(f"Raw data saved → {raw_path}")
 
         # 2. Label
-        df = make_labels(df, weak_threshold=dc["weak_thresholds"][index], strong_threshold=dc["strong_thresholds"][index])
+        df = make_labels(df)
 
         # 3. Preprocess
         df = preprocess(df)
