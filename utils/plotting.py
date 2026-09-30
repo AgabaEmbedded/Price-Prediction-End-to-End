@@ -49,8 +49,8 @@ plt.rcParams.update({
     "font.family":      "DejaVu Sans",
 })
 
-CLASS_NAMES  = ["Sell", "Buy"]
-CLASS_COLORS = ["#e74c3c", "#27ae60"]
+CLASS_NAMES  = ["Sell", "Hold", "Buy"]
+CLASS_COLORS = ["#e74c3c", "#f39c12", "#27ae60"]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -137,7 +137,7 @@ def plot_class_distribution(
 ) -> plt.Figure:
     fig, axes = plt.subplots(1, 3, figsize=(13, 4), sharey=False)
     for ax, (y, label) in zip(axes, [(y_train, "Train"), (y_val, "Val"), (y_test, "Test")]):
-        counts = np.bincount(y, minlength=2)
+        counts = np.bincount(y, minlength=3)
         bars = ax.bar(CLASS_NAMES, counts, color=CLASS_COLORS, edgecolor="#0f1117", linewidth=1)
         ax.set_title(f"{label}  (n={len(y):,})", fontsize=11)
         ax.set_xticklabels(CLASS_NAMES, rotation=30, ha="right", fontsize=9)
@@ -268,10 +268,10 @@ def plot_predictions_over_time(
     # ── Price line ──────────────────────────────────────────────────────────
     ax1.plot(dates_arr, prices_arr, color="#7f8c8d", linewidth=1, alpha=0.8, label="Close Price")
 
-    signal_colors  = {0: "#e74c3c", 1:"#27ae60"}
-    signal_markers = {0: "v",       1: "^"}
+    signal_colors  = {0: "#e74c3c", 1:"#ffffff", 2:"#08fc2c"}
+    signal_markers = {0: "v",       1: "o",       2: "^"}
 
-    for cls in range(5):
+    for cls in range(3):
         mask = y_pred_arr == cls
         if mask.any():
             ax1.scatter(
@@ -313,10 +313,10 @@ def plot_per_class_metrics(
     path: str | None = None,
 ) -> plt.Figure:
     precision, recall, f1, support = precision_recall_fscore_support(
-        y_true, y_pred, labels=list(range(2)), zero_division=0,
+        y_true, y_pred, labels=list(range(3)), zero_division=0,
     )
 
-    x     = np.arange(2)
+    x     = np.arange(3)
     width = 0.25
     fig, ax = plt.subplots(figsize=(5, 8))
 
@@ -364,7 +364,7 @@ def plot_equity_curve(
     returns_arr = np.asarray(actual_returns)
     y_pred_arr  = np.asarray(y_pred)
 
-    signal = np.where(y_pred_arr == 1,  1.0,
+    signal = np.where(y_pred_arr == 2,  1.0,
              np.where(y_pred_arr == 0, -1.0, 0.0))
 
     strat_returns = signal * returns_arr

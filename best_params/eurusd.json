@@ -1,0 +1,10 @@
+{
+  "ticker": "eurusd",
+  "model": "ExtraTrees",
+  "params": {
+    "n_estimators": 244,
+    "max_depth": 8,
+    "min_samples_split": 13
+  },
+  "val_f1": 0.3350364045684822
+}

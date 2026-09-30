@@ -1,0 +1,5 @@
+{
+  "ticker": "eurusd",
+  "best_model": "ExtraTrees",
+  "cv_f1": 0.33257557672672894
+}
