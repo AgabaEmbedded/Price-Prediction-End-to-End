@@ -44,3 +44,4 @@ def send_email(message: str):
     body = message
 
     configure_and_send_email(sender, password, recipient, subject, body)
+

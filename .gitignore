@@ -8,3 +8,4 @@ search_leaderboard.csv
 dvc.lock
 /plots
 test_predictions_RandomForest.csv
+/predictions

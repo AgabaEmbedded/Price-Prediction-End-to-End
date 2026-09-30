@@ -171,7 +171,8 @@ def build_sklearn_model(model_name: str, best_params: dict | None, cfg: dict):
 # Sklearn training
 # ─────────────────────────────────────────────────────────────────────────────
 
-def train_sklearn(model_name: str, best_params: dict | None, cfg: dict, data: tuple, full_training: bool = False):
+def train_sklearn(model_name: str, best_params: dict | None, cfg: dict, data: tuple,
+                  pred_dir: str | None = None, full_training: bool = False):
     (X_train, y_train, X_val, y_val, X_test, y_test,
      _, _, _, _, _, _,
      feature_cols, df_train, df_val, df_test,
@@ -179,55 +180,43 @@ def train_sklearn(model_name: str, best_params: dict | None, cfg: dict, data: tu
 
     seed = cfg["training"]["random_seed"]
 
-    
-
-    
-    # Combine train + val for final model (test is truly held-out)
     if full_training:
-        log.info("Full training mode: using train + val=test for final model.")
-        X_trainval = np.concatenate([X_train, X_val, X_test], axis=0)
-        y_trainval = np.concatenate([y_train, y_val, y_test], axis=0)
-        X_trainval = X_trainval[:-1]
-        y_trainval = y_trainval[:-1]
-        
+        log.info("Full training mode: using train + val + test.")
+        # Exclude the very last row (no next-bar label)
+        X_trainval = np.concatenate([X_train, X_val, X_test[:-1]], axis=0)
+        y_trainval = np.concatenate([y_train, y_val, y_test[:-1]], axis=0)
     else:
-        # Combine train + val for final model (test is truly held-out)
         X_trainval = np.concatenate([X_train, X_val], axis=0)
+        y_trainval = np.concatenate([y_train, y_val], axis=0)
 
-    # Handle class imbalance with SMOTE on training portion only
-    log.info("Applying SMOTE for class balancing...")
-    try:
-        sm = SMOTE(random_state=seed, k_neighbors=5)
-        X_trainval_bal, y_trainval_bal = sm.fit_resample(X_trainval, y_trainval)
-        log.info(f"  SMOTE: {len(y_trainval)} → {len(y_trainval_bal)} samples")
-    except Exception as e:
-        log.warning(f"SMOTE failed ({e}), training without resampling")
-        X_trainval_bal, y_trainval_bal = X_trainval, y_trainval
+    # ── NO SMOTE ──────────────────────────────────────────────────────────────
+    # SMOTE was removed because it creates synthetic interpolated samples that
+    # inflate offline F1 but do not represent real market distributions.
+    # All tree/ensemble models already have class_weight="balanced" set in
+    # model_registry.py which handles imbalance without data fabrication.
+    # ─────────────────────────────────────────────────────────────────────────
 
     model = build_sklearn_model(model_name, best_params, cfg)
 
     log.info(f"Training {model_name}...")
-    model.fit(X_trainval_bal, y_trainval_bal)
+    model.fit(X_trainval, y_trainval)
 
-    # Evaluate
     y_val_pred  = model.predict(X_val)
     y_test_pred = model.predict(X_test)
 
-
-    
-    test_df = pd.DataFrame({
-        "date": test_dates,
-        "actual": y_test,
-        "predicted": y_test_pred}
-        )
-    
-    test_df.to_csv(f"test_predictions_{model_name}.csv", index=False)
+    if pred_dir is not None:
+        test_df = pd.DataFrame({
+            "date":      test_dates,
+            "actual":    y_test,
+            "predicted": y_test_pred,
+        })
+        test_df.to_csv(pred_dir, index=False)
 
     metrics_val  = _compute_metrics(y_val,  y_val_pred,  prefix="val")
     metrics_test = _compute_metrics(y_test, y_test_pred, prefix="test")
 
-    log.info(f"\n  Validation:\n{classification_report(y_val, y_val_pred, target_names=['Sell','Buy'])}")
-    log.info(f"\n  Test:\n{classification_report(y_test, y_test_pred, target_names=['Sell','Buy'])}")
+    log.info(f"\n  Validation:\n{classification_report(y_val,  y_val_pred,  target_names=['Sell', 'Hold', 'Buy'])}")
+    log.info(f"\n  Test:\n{classification_report(y_test, y_test_pred, target_names=['Sell','Hold', 'Buy'])}")
 
     return model, y_val_pred, y_test_pred, {**metrics_val, **metrics_test}
 
@@ -396,7 +385,8 @@ def main():
     print(f"Full training mode: {full_training}")
     
     cfg = load_config()
-    setup_mlflow(cfg)
+    if not debugging_mode:
+        setup_mlflow(cfg)
 
     tickers = [args.ticker] if args.ticker else cfg["data"]["tickers"]
     models = [args.model] if args.model else cfg["training"]["models"]
@@ -442,21 +432,27 @@ def main():
             learning_history = None
             scaler = None
 
+            pred_dir = Path(f"{cfg['output']['predictions_dir']}")
+            pred_dir.mkdir(parents=True, exist_ok=True)
+            pred_dir = str(pred_dir / f"{ticker_id}_predictions.csv")
+
             if is_dl:
                 model, scaler, y_val_pred, y_test_pred, metrics, learning_history = \
                     train_dl(model_name, best_params, cfg, data)
             else:
                 model, y_val_pred, y_test_pred, metrics = \
-                    train_sklearn(model_name, best_params, cfg, data, full_training=full_training)
+                    train_sklearn(model_name, best_params, cfg, data, pred_dir, full_training=full_training)
 
             # ── Log metrics ────────────────────────────────────────────────────
-            print(f"\n  FINAL METRICS:")
-            for k, v in metrics.items():
-                print(f"    {k}: {v:.4f}")
+            #print(f"\n  FINAL METRICS:")
+            #for k, v in metrics.items():
+            #    print(f"    {k}: {v:.4f}")
 
             # ── Generate plots ─────────────────────────────────────────────────
             plots_dir = Path(f"{cfg['output']['plots_dir']}/{ticker_id}")
             plots_dir.mkdir(parents=True, exist_ok=True)
+            
+            
 
             save_all_plots(
                 y_true_val=y_true_val,
@@ -547,12 +543,16 @@ def main():
                 learning_history = None
                 scaler = None
 
+                pred_dir = Path(f"{cfg['output']['predictions_dir']}")
+                pred_dir.mkdir(parents=True, exist_ok=True)
+                pred_dir = str(pred_dir / f"{ticker_id}_predictions.csv")
+
                 if is_dl:
                     model, scaler, y_val_pred, y_test_pred, metrics, learning_history = \
                         train_dl(model_name, best_params, cfg, data)
                 else:
                     model, y_val_pred, y_test_pred, metrics = \
-                        train_sklearn(model_name, best_params, cfg, data, full_training=full_training)
+                        train_sklearn(model_name, best_params, cfg, data, pred_dir, full_training=full_training)
 
                 # ── Log metrics ────────────────────────────────────────────────────
                 mlflow.log_metrics(metrics)

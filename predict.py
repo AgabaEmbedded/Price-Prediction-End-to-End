@@ -1,20 +1,3 @@
-"""
-predict.py
-──────────
-Load a trained model from MLflow/disk and make a prediction for today.
-
-Usage:
-    # Load from MLflow Model Registry:
-    python predict.py --model LightGBM --from-registry
-
-    # Load from local file:
-    python predict.py --model LightGBM --model-path saved_models/LightGBM_best.joblib
-
-Output:
-    Today's signal: BUY / SELL / HOLD / STRONG BUY / STRONG SELL
-    with confidence breakdown.
-"""
-
 import sys
 import os
 
@@ -114,7 +97,7 @@ def print_signal(pred_dict: dict):
 
         if proba is not None:
             print("  Probability breakdown:")
-            labels = ["Strong Sell", "Sell", "Hold", "Buy", "Strong Buy"]
+            labels = ["Sell", "Buy"]
             bar_max = 30
             for i, (lbl, p) in enumerate(zip(labels, proba)):
                 bar = "█" * int(p * bar_max)
@@ -143,7 +126,7 @@ def get_signal_message(pred_dict: dict) -> str:
 
         if proba is not None:
             lines.append("   Probability breakdown:")
-            labels = ["Strong Sell", "Sell", "Hold", "Buy", "Strong Buy"]
+            labels = ["Sell", "Buy"]
             bar_max = 30
             for i, (lbl, p) in enumerate(zip(labels, proba)):
                 bar = "█" * int(p * bar_max)
@@ -170,16 +153,18 @@ def main():
     
     parser = argparse.ArgumentParser()
     parser.add_argument("--ticker",         required=False, help="yfinance ticker for pair to predict on e.g EURUSD=X, GBPUSD=X, etc.")
-    parser.add_argument("--model-path",    default=None,  help="Local model file path")
+    parser.add_argument("--local",    default="False",  help="Local model file path")
     #parser.add_argument("--from-registry", action="store_true", help="Load from MLflow registry")
     args = parser.parse_args()
 
 
     cfg = load_config()
     tickers = [args.ticker] if args.ticker else cfg["data"]["tickers"]
+    local_model = args.local.lower() == "true" if args.local else False
     model_names = cfg["training"]["models"]
     model_names = [model_names[tickers.index(tickers[0])]] if args.ticker else model_names
     
+
     size = cfg["trade"]["size"]
     IC_MT5_PATH = cfg["trade"]["IC_MT5_PATH"]
 
@@ -200,8 +185,9 @@ def main():
             feature_cols = json.load(f)
 
         
-        if args.model_path:
-            pred, proba, last_date = predict_sklearn(args.model_path, feature_cols, cfg, ticker_id, model_name)
+        if local_model:
+            print(f"[INFO] Loading model from local path: saved_models/{ticker_id}/model_best.joblib")
+            pred, proba, last_date = predict_sklearn(f"saved_models/{ticker_id}/model_best.joblib", feature_cols, cfg, ticker_id, model_name)
         else:
             pred, proba, last_date = predict_from_registry(feature_cols, cfg, ticker_id, model_name)
         pred_dict[ticker_id] = [pred, proba, last_date]
@@ -221,7 +207,7 @@ def main():
     print_signal(pred_dict)
     IC_MT5_PATH = r"C:\Program Files\MetaTrader 5\terminal64.exe"
   
-    send_email(message)
+    #send_email(message)
     # Trigger management sequence
     for ticker_id, (pred, proba, last_date) in pred_dict.items():
         try:
