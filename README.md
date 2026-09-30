@@ -1,5 +1,5 @@
 
-# EUR/USD Price-Direction Prediction — End-to-End MLOps Pipeline
+# Price-Direction Prediction — End-to-End MLOps Pipeline
 
 A research-grade ML system that predicts the **next-day directional move** of FX pairs and turns it
 into a daily trading signal.
